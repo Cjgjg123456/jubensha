@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>剧遇 - 浏览记录</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft Yahei", sans-serif; }
+        body { width: 100vw; height: 100vh; background: url("images/4.jpg") no-repeat center center; background-size: cover; display: flex; padding: 20px; overflow: hidden; }
+        .sidebar { width: 280px; height: 100%; background: linear-gradient(180deg, rgba(15,26,58,0.9), rgba(26,42,90,0.9)); border-radius: 20px; padding: 40px 20px; display: flex; flex-direction: column; backdrop-filter: blur(10px); }
+        .sidebar-logo { text-align: center; margin-bottom: 50px; }
+        .sidebar-logo h2 { color: #fff; font-size: 42px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .sidebar-logo .star { width: 25px; height: 35px; background: #ff6600; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+        .menu-list { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+        .menu-item { width: 100%; height: 60px; background: transparent; border: none; border-radius: 12px; color: #fff; font-size: 18px; display: flex; align-items: center; padding: 0 20px; gap: 15px; cursor: pointer; opacity: 0.7; }
+        .menu-item.active { background: linear-gradient(90deg, #ff6600, #ff3300); opacity: 1; }
+
+        .main-content { flex: 1; height: 100%; background: rgba(18, 22, 33, 0.85); backdrop-filter: blur(15px); border-radius: 20px; margin-left: 20px; padding: 40px; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.1); }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; }
+        .page-title { font-size: 28px; color: #fff; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .back-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 8px; cursor: pointer; color: #fff; transition: 0.3s; }
+        .back-btn:hover { background: #ff6600; border-color: #ff6600; }
+
+        /* 浏览列表 */
+        .browse-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 10px; }
+        .browse-list::-webkit-scrollbar { width: 6px; }
+        .browse-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+        .browse-item { background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px 20px; display: flex; align-items: center; gap: 20px; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s; }
+        .browse-item:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); }
+        .b-cover { width: 50px; height: 70px; border-radius: 6px; background: #444; object-fit: cover; }
+        .b-info { flex: 1; }
+        .b-title { font-size: 18px; color: #fff; font-weight: bold; margin-bottom: 5px; }
+        .b-tags span { background: rgba(255,255,255,0.1); color: #ccc; font-size: 12px; padding: 2px 6px; border-radius: 4px; margin-right: 5px; }
+        .b-time { font-size: 13px; color: #888; }
+        .btn-view { background: none; border: 1px solid #ff6600; color: #ff6600; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-weight: bold; }
+        .btn-view:hover { background: #ff6600; color: #fff; }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:50px;">
+        <img src="images/icon.png" alt="logo" style="width:38px; height:38px; border-radius:10px; object-fit:cover; box-shadow: 0 0 10px rgba(255,102,0,0.3);">
+        <h2 style="margin:0; font-size:22px; letter-spacing:1px; color:#fff;">古建奇案馆</h2>
+    </div>
+    <div class="menu-list">
+        <button class="menu-item" onclick="goToProfile()"><span>👤</span><span>个人信息</span></button>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="header-top">
+        <h1 class="page-title">🔖 浏览记录</h1>
+        <button class="back-btn" onclick="goToProfile()">← 返回个人中心</button>
+    </div>
+
+    <div class="browse-list" id="dataList">
+        <div style="color:#888; text-align:center; padding-top:50px;">加载中...</div>
+    </div>
+</div>
+
+<script>
+    function goToProfile() {
+        const username = localStorage.getItem('loginUsername') || '';
+        window.location.href = `profile.html?username=${encodeURIComponent(username)}`;
+    }
+
+    function formatDate(dateArr) {
+        if (!dateArr) return '未知时间';
+        if (Array.isArray(dateArr)) return `${dateArr[0]}-${String(dateArr[1]).padStart(2,'0')}-${String(dateArr[2]).padStart(2,'0')} ${String(dateArr[3]||0).padStart(2,'0')}:${String(dateArr[4]||0).padStart(2,'0')}`;
+        return new Date(dateArr).toLocaleString('zh-CN').substring(0, 16);
+    }
+
+    window.onload = async function() {
+        const username = localStorage.getItem('loginUsername');
+        const list = document.getElementById('dataList');
+        try {
+            const res = await fetch(`/api/user/records/browse?username=${encodeURIComponent(username)}`).then(r => r.json());
+            if (res.success && res.data.length > 0) {
+                list.innerHTML = res.data.map(item => `
+                  <div class="browse-item">
+                      <div class="b-cover" style="background: url('${item.cover_url || 'https://placehold.co/50x70/444/ff6600?text=Cover'}') center/cover;"></div>
+                      <div class="b-info">
+                          <div class="b-title">${item.title || '已下架剧本'}</div>
+                          <div class="b-tags">${(item.tags || '热门').split(',').map(t=>`<span>${t}</span>`).join('')}</div>
+                      </div>
+                      <div class="b-time">浏览于: ${formatDate(item.browse_time)}</div>
+                      <button class="btn-view" onclick="window.location.href='room.html'">去大厅看</button>
+                  </div>
+                `).join('');
+            } else {
+                list.innerHTML = '<div style="color:#888; text-align:center; padding-top:50px;">暂无浏览记录</div>';
+            }
+        } catch (e) {
+            list.innerHTML = '<div style="color:red; text-align:center; padding-top:50px;">网络异常</div>';
+        }
+    }
+</script>
+</body>
+</html>

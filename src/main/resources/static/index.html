@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古建奇案馆 - 首页</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: url("images/4.jpg") no-repeat center center;
+            background-size: cover;
+            display: flex;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            height: 100%;
+            background: linear-gradient(180deg, #0f1a3a, #1a2a5a);
+            border-radius: 20px;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .sidebar::before,
+        .sidebar::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.4);
+        }
+        .sidebar::before {
+            top: 15px; left: 15px;
+            border-right: none; border-bottom: none;
+            border-radius: 5px 0 0 0;
+        }
+        .sidebar::after {
+            bottom: 15px; left: 15px;
+            border-right: none; border-top: none;
+            border-radius: 0 0 0 5px;
+        }
+        .sidebar-corner-rt {
+            position: absolute; top: 15px; right: 15px;
+            width: 20px; height: 20px;
+            border: 3px solid rgba(255,255,255,0.4);
+            border-left: none; border-bottom: none;
+            border-radius: 0 5px 0 0;
+        }
+        .sidebar-corner-rb {
+            position: absolute; bottom: 15px; right: 15px;
+            width: 20px; height: 20px;
+            border: 3px solid rgba(255,255,255,0.4);
+            border-left: none; border-top: none;
+            border-radius: 0 0 5px 0;
+        }
+
+        .sidebar-logo { text-align: center; margin-bottom: 50px; }
+        .sidebar-logo .divider {
+            width: 80px; height: 3px;
+            background: linear-gradient(90deg, transparent, #fff, transparent);
+            margin: 15px auto 0;
+        }
+        .menu-list { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+
+        .menu-item {
+            width: 100%; height: 60px;
+            background: transparent; border: none; border-radius: 12px;
+            color: #fff; font-size: 18px;
+            display: flex; align-items: center; padding: 0 20px; gap: 15px;
+            cursor: pointer; transition: all 0.3s; opacity: 0.7;
+        }
+        .menu-item.active {
+            background: linear-gradient(90deg, #ff6600, #ff3300);
+            opacity: 1; box-shadow: 0 5px 15px rgba(255, 102, 0, 0.3);
+        }
+        .menu-item:not(.active):hover {
+            opacity: 1; background: rgba(255,255,255,0.1);
+        }
+        .logout-btn {
+            width: 100%; height: 50px; background: transparent;
+            border: none; color: #fff; font-size: 16px;
+            cursor: pointer; transition: all 0.3s; text-align: left; padding-left: 20px; opacity: 0.7;
+        }
+        .logout-btn:hover { opacity: 1; color: #ff3300; }
+
+        .main-content {
+            flex: 1; height: 100%;
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px; margin-left: 20px;
+            padding: 40px; overflow-y: auto;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .action-card.creator-card {
+            grid-column: 1 / 2;
+        }
+
+        .action-card {
+            position: relative;
+            height: 280px;
+            border-radius: 15px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid #b89758;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background-color: #2a2a2a;
+        }
+
+        .action-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(184, 151, 88, 0.4);
+            border-color: #d4b475;
+        }
+
+        .card-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.6s ease;
+        }
+        .action-card:hover .card-bg {
+            transform: scale(1.1);
+        }
+
+        .card-overlay {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 60%;
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+        }
+
+        .card-title {
+            position: absolute;
+            bottom: 25px;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            font-size: 26px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 2;
+        }
+
+        .card-decoration {
+            position: absolute;
+            width: 30px; height: 30px;
+            border: 2px solid #b89758;
+            opacity: 0.6;
+            z-index: 2;
+            transition: all 0.3s;
+        }
+        .dec-tl { top: 5px; left: 5px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
+        .dec-tr { top: 5px; right: 5px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
+        .dec-bl { bottom: 5px; left: 5px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
+        .dec-br { bottom: 5px; right: 5px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
+
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <div class="sidebar-corner-rt"></div>
+    <div class="sidebar-corner-rb"></div>
+    <div class="sidebar-logo">
+        <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
+            <img src="images/icon.png" alt="logo" style="width:38px; height:38px; border-radius:10px; object-fit:cover; box-shadow: 0 0 10px rgba(255,102,0,0.3);">
+            <h2 style="margin:0; font-size:26px; letter-spacing:1px; color:#fff;">古建奇案馆</h2>
+        </div>
+        <div class="divider"></div>
+    </div>
+    <div class="menu-list">
+        <button class="menu-item active" onclick="goToPage('index.html')">
+            <span>🏠</span>
+            <span>首页</span>
+        </button>
+        <button class="menu-item" onclick="goToPage('profile.html')">
+            <span>👤</span>
+            <span>个人信息</span>
+        </button>
+        <button class="menu-item" onclick="goToPage('chat.html')">
+            <span>💬</span>
+            <span>好友私信</span>
+        </button>
+    </div>
+    <button class="logout-btn" id="logoutBtn">退出登录</button>
+</div>
+
+<div class="main-content">
+    <div class="action-grid">
+
+        <div class="action-card" onclick="goToPage('match.html')">
+            <div class="card-bg" style="background-image: url('images/card_match2.jpg');"></div>
+            <div class="card-overlay"></div>
+            <div class="card-decoration dec-tl"></div><div class="card-decoration dec-tr"></div>
+            <div class="card-decoration dec-bl"></div><div class="card-decoration dec-br"></div>
+            <div class="card-title">快速匹配</div>
+        </div>
+
+        <div class="action-card" onclick="goToPage('room.html')">
+            <div class="card-bg" style="background-image: url('images/card_room2.jpg');"></div>
+            <div class="card-overlay"></div>
+            <div class="card-decoration dec-tl"></div><div class="card-decoration dec-tr"></div>
+            <div class="card-decoration dec-bl"></div><div class="card-decoration dec-br"></div>
+            <div class="card-title">开房间</div>
+        </div>
+
+        <div class="action-card creator-card" onclick="goToPage('creator.html')">
+            <div class="card-bg" style="background-image: url('images/card_creator2.jpg');"></div>
+            <div class="card-overlay"></div>
+            <div class="card-decoration dec-tl"></div><div class="card-decoration dec-tr"></div>
+            <div class="card-decoration dec-bl"></div><div class="card-decoration dec-br"></div>
+            <div class="card-title">创作者空间</div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function goToPage(pageUrl) {
+        const username = localStorage.getItem('loginUsername') || '';
+        if (username) {
+            window.location.href = `${pageUrl}?username=${encodeURIComponent(username)}`;
+        } else {
+            window.location.href = 'login.html';
+        }
+    }
+
+    window.onload = function() {
+        const username = localStorage.getItem('loginUsername');
+        if (!username) {
+            alert('请先登录');
+            window.location.href = 'login.html';
+        }
+    };
+
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+        if (confirm('确定要退出古建奇案馆吗？')) {
+            fetch('/api/user/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    localStorage.removeItem('loginUsername');
+                    localStorage.removeItem('userId');
+                    window.location.href = 'login.html';
+                })
+                .catch(err => {
+                    console.error('退出异常:', err);
+                    localStorage.clear();
+                    window.location.href = 'login.html';
+                });
+        }
+    });
+</script>
+</body>
+</html>

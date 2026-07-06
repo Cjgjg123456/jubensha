@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古建奇案馆 - 快速匹配</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft Yahei", sans-serif; }
+        body { width: 100vw; height: 100vh; background: url("images/4.jpg") no-repeat center center; background-size: cover; display: flex; padding: 20px; overflow: hidden; }
+
+        /* ================= 侧边栏 ================= */
+        .sidebar { width: 280px; height: 100%; background: linear-gradient(180deg, rgba(15,26,58,0.9), rgba(26,42,90,0.9)); border-radius: 20px; padding: 40px 20px; display: flex; flex-direction: column; position: relative; backdrop-filter: blur(10px); }
+        .sidebar-logo { text-align: center; margin-bottom: 50px; }
+        .sidebar-logo h2 { color: #fff; font-size: 42px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .sidebar-logo .star { width: 25px; height: 35px; background: #ff6600; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+        .menu-list { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+        .menu-item { width: 100%; height: 60px; background: transparent; border: none; border-radius: 12px; color: #fff; font-size: 18px; display: flex; align-items: center; padding: 0 20px; gap: 15px; cursor: pointer; transition: all 0.3s; opacity: 0.7; }
+        .menu-item:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+        .logout-btn { width: 100%; height: 50px; background: transparent; border: none; color: #fff; font-size: 16px; cursor: pointer; transition: all 0.3s; text-align: left; padding-left: 20px; opacity: 0.7; }
+        .logout-btn:hover { opacity: 1; color: #ff3300; }
+
+        /* ================= 主内容区 ================= */
+        .main-content { flex: 1; height: 100%; background: rgba(20, 25, 40, 0.85); backdrop-filter: blur(15px); border-radius: 20px; margin-left: 20px; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+        .back-btn { position: absolute; top: 30px; left: 40px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 16px; color: #fff; transition: 0.3s; }
+        .back-btn:hover { background: #ff6600; border-color: #ff6600; }
+
+        /* 匹配条件偏好设置 */
+        .preferences { display: flex; gap: 20px; background: rgba(0,0,0,0.3); padding: 20px 40px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .pref-item select { padding: 10px 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); outline: none; font-size: 15px; background: rgba(255,255,255,0.1); color: #fff; cursor: pointer; }
+        .pref-item select option { background: #1a2a5a; color: #fff; }
+
+        /* 房间搜索区域 */
+        .room-search-area { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
+        .room-search-input { padding: 12px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); outline: none; font-size: 15px; background: rgba(255,255,255,0.1); color: #fff; width: 250px; }
+        .room-search-input::placeholder { color: #888; }
+        .search-btn { padding: 12px 25px; border-radius: 8px; border: none; background: linear-gradient(135deg, #00a8ff, #0066cc); color: #fff; font-size: 15px; cursor: pointer; transition: 0.3s; }
+        .search-btn:hover { box-shadow: 0 0 15px rgba(0,168,255,0.5); }
+
+        /* 房间列表 */
+        .room-list { display: none; flex-direction: column; gap: 15px; width: 100%; max-width: 600px; }
+        .room-card { background: rgba(30, 38, 56, 0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
+        .room-card:hover { border-color: #ff6600; }
+        .room-info { flex: 1; }
+        .room-name { font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 5px; }
+        .room-detail { font-size: 14px; color: #aaa; }
+        .room-status { padding: 5px 12px; border-radius: 20px; font-size: 12px; }
+        .status-idle { background: rgba(40,167,69,0.2); color: #28a745; }
+        .status-playing { background: rgba(255,102,0,0.2); color: #ff6600; }
+        .join-room-btn { padding: 10px 20px; border-radius: 8px; border: none; background: linear-gradient(135deg, #ff6600, #ff3300); color: #fff; font-size: 14px; cursor: pointer; transition: 0.3s; }
+        .join-room-btn:hover { box-shadow: 0 0 15px rgba(255,102,0,0.5); }
+        .no-rooms { text-align: center; color: #aaa; font-size: 16px; padding: 20px; }
+
+        /* 匹配等待区 UI */
+        .match-waiting-area { display: flex; flex-direction: column; align-items: center; transition: opacity 0.3s; }
+        .timer-display { font-size: 48px; font-weight: bold; color: #ff9900; margin-bottom: 20px; font-family: monospace; text-shadow: 0 0 15px rgba(255, 153, 0, 0.5); }
+        .match-radar-container { position: relative; width: 250px; height: 250px; display: flex; align-items: center; justify-content: center; margin-bottom: 30px; }
+        .radar-btn { width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #ff6600, #ff3300); color: #fff; font-size: 22px; font-weight: bold; border: none; cursor: pointer; position: relative; z-index: 10; box-shadow: 0 0 30px rgba(255, 102, 0, 0.6); transition: transform 0.2s; }
+        .radar-btn:hover { transform: scale(1.05); }
+
+        .ripple { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 2px solid #ff6600; z-index: 1; opacity: 0; }
+        .ripple.active { animation: rippleAnim 2s infinite cubic-bezier(0.1, 0.5, 0.8, 1); }
+        .ripple:nth-child(2) { animation-delay: 0.6s; }
+        .ripple:nth-child(3) { animation-delay: 1.2s; }
+        @keyframes rippleAnim { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(3.5); opacity: 0; } }
+        .status-text { font-size: 18px; color: #aaa; letter-spacing: 1px; text-align: center;}
+
+        /* ================= 匹配成功结果卡片 ================= */
+        .match-result-card { display: none; width: 600px; background: rgba(30, 38, 56, 0.95); border: 1px solid #445; border-radius: 20px; padding: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); animation: slideUp 0.5s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .result-header { text-align: center; margin-bottom: 20px; color: #28a745; font-size: 24px; font-weight: bold; text-shadow: 0 0 10px rgba(40,167,69,0.4); }
+        .script-info { display: flex; gap: 20px; margin-bottom: 25px; }
+        .script-cover { width: 140px; height: 190px; border-radius: 10px; background: #333; object-fit: cover; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .script-details { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .script-title { font-size: 26px; font-weight: bold; color: #fff; margin-bottom: 10px; }
+        .tags { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+        .tag { background: rgba(255,102,0,0.2); color: #ff9900; padding: 4px 10px; border-radius: 6px; font-size: 13px; border: 1px solid rgba(255,102,0,0.3); }
+        .info-row { font-size: 14px; color: #ccc; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+        .stars { color: #ffcc00; font-size: 14px; }
+        .script-desc { font-size: 14px; color: #aaa; line-height: 1.6; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin-bottom: 25px; max-height: 100px; overflow-y: auto; }
+
+        .action-btns { display: flex; gap: 20px; }
+        .btn-join { flex: 1; padding: 15px; background: linear-gradient(90deg, #ff6600, #ff3300); border: none; border-radius: 10px; color: #fff; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-join:hover { box-shadow: 0 0 20px rgba(255,102,0,0.5); transform: translateY(-2px); }
+        .btn-rematch { flex: 1; padding: 15px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: #fff; font-size: 18px; cursor: pointer; transition: 0.3s; }
+        .btn-rematch:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <div class="sidebar-logo">
+        <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
+            <img src="images/icon.png" alt="logo" style="width:38px; height:38px; border-radius:10px; object-fit:cover; box-shadow: 0 0 10px rgba(255,102,0,0.3);">
+            <h2 style="margin:0; font-size:26px; letter-spacing:1px; color:#fff;">古建奇案馆</h2>
+        </div>
+    </div>
+    <div class="menu-list">
+        <button class="menu-item" onclick="goToPage('index.html')"><span>🏠</span><span>首页</span></button>
+        <button class="menu-item" onclick="goToPage('profile.html')"><span>👤</span><span>个人信息</span></button>
+        <button class="menu-item" onclick="goToPage('chat.html')"><span>💬</span><span>好友私信</span></button>
+    </div>
+    <button class="logout-btn" id="logoutBtn">退出登录</button>
+</div>
+
+<div class="main-content">
+    <button class="back-btn" onclick="goToPage('index.html')">← 返回首页</button>
+
+    <div class="preferences" id="filterArea">
+        <div class="pref-item">
+            <select id="scriptType">
+                <option value="all">题材 (不限)</option>
+                <option value="推理">硬核推理</option>
+                <option value="情感">沉浸情感</option>
+                <option value="恐怖">微恐惊悚</option>
+                <option value="欢乐">沙雕欢乐</option>
+            </select>
+        </div>
+        <div class="pref-item">
+            <select id="playerCount">
+                <option value="all">人数 (不限)</option>
+                <option value="5">5人本</option>
+                <option value="6">6人本</option>
+                <option value="7">7人本</option>
+            </select>
+        </div>
+        <div class="pref-item">
+            <select id="scriptDiff">
+                <option value="all">难度 (不限)</option>
+                <option value="1">新手 (1-2星)</option>
+                <option value="3">进阶 (3-4星)</option>
+                <option value="5">烧脑 (5星)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="room-search-area" id="roomSearchArea">
+        <input type="text" class="room-search-input" id="roomIdInput" placeholder="输入房间号搜索">
+        <button class="search-btn" onclick="searchRoom()">搜索房间</button>
+    </div>
+
+    <div class="room-list" id="roomList">
+        <div class="no-rooms" id="noRooms">暂无公开房间</div>
+    </div>
+
+    <div class="match-waiting-area" id="waitingArea">
+        <div class="timer-display" id="timer">00:00</div>
+        <div class="match-radar-container">
+            <div class="ripple" id="r1"></div>
+            <div class="ripple" id="r2"></div>
+            <div class="ripple" id="r3"></div>
+            <button class="radar-btn" id="matchBtn">开始匹配</button>
+        </div>
+        <div class="status-text" id="statusText">选择上方条件<br>点击按钮即刻寻找默契车队</div>
+    </div>
+
+    <div class="match-result-card" id="resultCard">
+        <div class="result-header">✨ 匹配成功，已为您锁定车队 ✨</div>
+        <div class="script-info">
+            <div class="script-cover" id="resCover" style="background-color: #444;"></div>
+            <div class="script-details">
+                <div>
+                    <div class="script-title" id="resTitle">《加载中...》</div>
+                    <div class="tags" id="resTags">
+                    </div>
+                </div>
+                <div>
+                    <div class="info-row">👥 房间人数：<strong style="color:#fff;" id="resWait">5/6 (缺1人)</strong></div>
+                    <div class="info-row">🚻 角色配置：<span id="resConfig">加载中</span></div>
+                    <div class="info-row">🔥 剧本难度：<span class="stars" id="resStars">★★★☆☆</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="script-desc" id="resDesc">加载中...</div>
+        <div class="action-btns">
+            <button class="btn-rematch" onclick="rematch()">不感兴趣，重新匹配</button>
+            <button class="btn-join" onclick="joinRoom()">确认加入房间</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function goToPage(pageUrl) {
+        const username = localStorage.getItem('loginUsername') || '';
+        window.location.href = `${pageUrl}?username=${encodeURIComponent(username)}`;
+    }
+
+    // ================= 模拟剧本数据库 =================
+    // 包含不同类型、人数和难度的剧本，用于筛选测试
+    const mockScripts = [
+        { title: "孤岛惊魂", type: "推理", count: "6", diff: "5", config: "3男3女", stars: "★★★★★", desc: "你们在海上遭遇风暴，流落到这座与世隔绝的孤岛。当第一具尸体出现时，大家都明白，凶手就在你们之中...", tags: ["硬核", "密室"], coverBg: "#444" },
+        { title: "青山入云间", type: "情感", count: "6", diff: "3", config: "3男3女", stars: "★★★☆☆", desc: "天禧二十三年，大楚皇城内风云暗涌。一首绝命诗，牵扯出十年前的旧案。谁是执棋者，谁又是局中人？", tags: ["古风", "情感", "演绎"], coverBg: "#335" },
+        { title: "拆迁暴发户", type: "欢乐", count: "7", diff: "1", config: "4男3女", stars: "★★☆☆☆", desc: "老城坊终于要拆迁了！为了争夺巨额拆迁款，老王家这七口人可谓是八仙过海各显神通，爆笑互撕即将开始！", tags: ["欢乐", "机制", "撕逼"], coverBg: "#533" },
+        { title: "山村老尸", type: "恐怖", count: "5", diff: "3", config: "2男3女", stars: "★★★★☆", desc: "偏僻的山村，诡异的童谣。听说后山的破庙里，每到半夜就会传出女人的哭声。你们作为探险主播，决定一探究竟...", tags: ["恐怖", "民俗", "变格"], coverBg: "#111" },
+        { title: "代码杀机", type: "欢乐", count: "5", diff: "3", config: "5男", stars: "★★★★☆", desc: "距离产品上线仅剩几小时，核心服务器惨遭 rm -rf /*！大门反锁，5名互联网打工人互踩。是谁删库跑路？", tags: ["程序员", "职场", "欢乐"], coverBg: "#2a1b4a" },
+        { title: "暗夜钟声", type: "推理", count: "7", diff: "5", config: "4男3女", stars: "★★★★★", desc: "欧洲中世纪古堡，十二点的钟声敲响，伯爵死在了密室中。完美的犯罪手法，这究竟是幽灵作祟还是人为？", tags: ["欧式", "硬核", "还原"], coverBg: "#2d2d2d" }
+    ];
+
+    let isMatching = false;
+    let matchTimeout = null;
+    let timerInterval = null;
+    let seconds = 0;
+    let currentMatchedScript = null; // 当前匹配到的剧本
+
+    const matchBtn = document.getElementById('matchBtn');
+    const ripples = document.querySelectorAll('.ripple');
+    const statusText = document.getElementById('statusText');
+    const timerDisplay = document.getElementById('timer');
+    const waitingArea = document.getElementById('waitingArea');
+    const resultCard = document.getElementById('resultCard');
+    const filterArea = document.getElementById('filterArea');
+
+    function formatTime(sec) {
+        const m = Math.floor(sec / 60).toString().padStart(2, '0');
+        const s = (sec % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    function updateTimer() {
+        seconds++;
+        timerDisplay.innerText = formatTime(seconds);
+    }
+
+    // 开始匹配逻辑
+    function startMatching() {
+        // 1. 获取筛选条件
+        const selectedType = document.getElementById('scriptType').value;
+        const selectedCount = document.getElementById('playerCount').value;
+        const selectedDiff = document.getElementById('scriptDiff').value;
+
+        // 2. 根据条件过滤剧本库
+        let filteredScripts = mockScripts.filter(s => {
+            let matchType = (selectedType === 'all' || s.type === selectedType);
+            let matchCount = (selectedCount === 'all' || s.count === selectedCount);
+            // 难度筛选逻辑：1=新手(1-2星), 3=进阶(3-4星), 5=烧脑(5星)
+            let matchDiff = true;
+            if (selectedDiff === '1') matchDiff = (s.diff <= 2);
+            if (selectedDiff === '3') matchDiff = (s.diff == 3 || s.diff == 4);
+            if (selectedDiff === '5') matchDiff = (s.diff == 5);
+            if (selectedDiff === 'all') matchDiff = true;
+
+            return matchType && matchCount && matchDiff;
+        });
+
+        // 3. UI 状态切换
+        isMatching = true;
+        seconds = 0;
+        timerDisplay.innerText = "00:00";
+        matchBtn.innerText = '取消匹配';
+        matchBtn.style.background = 'linear-gradient(135deg, #ff3333, #cc0000)';
+        ripples.forEach(r => r.classList.add('active'));
+        filterArea.style.opacity = '0.5'; // 匹配中不可改条件提示
+        filterArea.style.pointerEvents = 'none';
+
+        if (filteredScripts.length === 0) {
+            statusText.innerHTML = '正在全网搜索合适车队...<br><span style="color:#ff3333; font-size:14px;">(当前条件较苛刻，可能需要较长时间)</span>';
+        } else {
+            statusText.innerHTML = '正在全网搜索合适车队...';
+        }
+        statusText.style.color = '#ff9900';
+        timerInterval = setInterval(updateTimer, 1000);
+
+        // 4. 模拟匹配等待时间 (3-5秒)
+        const randomWaitTime = Math.floor(Math.random() * 3000) + 2000;
+
+        matchTimeout = setTimeout(() => {
+            if (filteredScripts.length === 0) {
+                // 没有符合条件的本
+                stopMatching();
+                alert("😭 当前筛选条件下未找到正在招募的车队！\n请放宽（题材/人数/难度）条件后重新匹配。");
+            } else {
+                // 随机抽取一个符合条件的本
+                currentMatchedScript = filteredScripts[Math.floor(Math.random() * filteredScripts.length)];
+                showMatchResult(currentMatchedScript);
+            }
+        }, randomWaitTime);
+    }
+
+    function stopMatching() {
+        isMatching = false;
+        clearInterval(timerInterval);
+        clearTimeout(matchTimeout);
+        matchBtn.innerText = '开始匹配';
+        matchBtn.style.background = 'linear-gradient(135deg, #ff6600, #ff3300)';
+        ripples.forEach(r => r.classList.remove('active'));
+        statusText.innerHTML = '选择上方条件<br>点击按钮即刻寻找默契车队';
+        statusText.style.color = '#aaa';
+
+        filterArea.style.opacity = '1';
+        filterArea.style.pointerEvents = 'auto';
+    }
+
+    // 展示匹配到的剧本详情
+    function showMatchResult(script) {
+        stopMatching();
+
+        // 动态填充卡片数据
+        document.getElementById('resTitle').innerText = `《${script.title}》`;
+        document.getElementById('resConfig').innerText = script.config;
+        document.getElementById('resStars').innerText = script.stars;
+        document.getElementById('resDesc').innerText = script.desc;
+        document.getElementById('resCover').style.background = `url('https://placehold.co/140x190/${script.coverBg.replace('#','')}/fff?text=Cover') center/cover, ${script.coverBg}`;
+
+        // 模拟当前房间缺几人 (随机缺1-2人)
+        const missing = Math.floor(Math.random() * 2) + 1;
+        const current = parseInt(script.count) - missing;
+        document.getElementById('resWait').innerText = `${current}/${script.count} (缺${missing}人)`;
+
+        // 动态渲染标签
+        let tagsHtml = '';
+        script.tags.forEach((tag, index) => {
+            // 给第一个标签换个颜色
+            const colorClass = index === 1 ? 'tag blue' : 'tag';
+            tagsHtml += `<span class="${colorClass}">${tag}</span>`;
+        });
+        document.getElementById('resTags').innerHTML = tagsHtml;
+
+        // 切换显示视图
+        waitingArea.style.display = 'none';
+        filterArea.style.display = 'none';
+        resultCard.style.display = 'block';
+    }
+
+    // 重新匹配
+    function rematch() {
+        resultCard.style.display = 'none';
+        waitingArea.style.display = 'flex';
+        filterArea.style.display = 'flex';
+        startMatching();
+    }
+
+    // 确认加入房间
+    function joinRoom() {
+        if(!currentMatchedScript) return;
+
+        const username = localStorage.getItem('loginUsername') || '';
+        // 带着剧本名和随机生成的房间名跳转到游戏大厅
+        const randomRoomName = `${currentMatchedScript.title} ${Math.floor(Math.random()*100)}号专车`;
+        const targetUrl = `game-room.html?username=${encodeURIComponent(username)}&script=${encodeURIComponent(currentMatchedScript.title)}&roomName=${encodeURIComponent(randomRoomName)}`;
+
+        alert("✨ 匹配成功！即将带您进入游戏房间...");
+        window.location.href = targetUrl;
+    }
+
+    // 按钮事件绑定
+    matchBtn.addEventListener('click', function() {
+        if (!isMatching) { startMatching(); }
+        else { stopMatching(); }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+        localStorage.clear(); window.location.href = 'login.html';
+    });
+
+    // ================= 房间搜索功能 =================
+    const roomSearchArea = document.getElementById('roomSearchArea');
+    const roomIdInput = document.getElementById('roomIdInput');
+    const roomList = document.getElementById('roomList');
+    const noRooms = document.getElementById('noRooms');
+
+    async function searchRoom() {
+        const roomId = roomIdInput.value.trim();
+        
+        if (!roomId) {
+            alert('请输入房间号');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/online/room/${roomId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+            
+            if (result.code === 200 && result.data) {
+                showRoomSearchResult([result.data]);
+            } else {
+                showRoomSearchResult([]);
+            }
+        } catch (error) {
+            console.error('搜索房间失败:', error);
+            showRoomSearchResult([]);
+        }
+    }
+
+    async function loadPublicRooms() {
+        try {
+            const response = await fetch('/api/online/rooms', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+            
+            if (result.code === 200 && result.data) {
+                showRoomSearchResult(result.data);
+            } else {
+                showRoomSearchResult([]);
+            }
+        } catch (error) {
+            console.error('加载房间列表失败:', error);
+            showRoomSearchResult([]);
+        }
+    }
+
+    function showRoomSearchResult(rooms) {
+        roomList.innerHTML = '';
+        
+        if (rooms.length === 0) {
+            roomList.style.display = 'none';
+            return;
+        }
+
+        roomList.style.display = 'flex';
+        
+        rooms.forEach(room => {
+            const roomCard = document.createElement('div');
+            roomCard.className = 'room-card';
+            
+            const statusClass = room.status === 'IDLE' ? 'status-idle' : 'status-playing';
+            const statusText = room.status === 'IDLE' ? '等待中' : '游戏中';
+            
+            roomCard.innerHTML = `
+                <div class="room-info">
+                    <div class="room-name">${room.roomName}</div>
+                    <div class="room-detail">房间号: ${room.roomId} | 人数: ${room.playerCount}/${room.maxPlayers}</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span class="room-status ${statusClass}">${statusText}</span>
+                    <button class="join-room-btn" onclick="joinRoomById('${room.roomId}', '${room.roomName}', '${room.scriptId}')">加入</button>
+                </div>
+            `;
+            
+            roomList.appendChild(roomCard);
+        });
+    }
+
+    function joinRoomById(roomId, roomName, scriptId) {
+        const username = localStorage.getItem('loginUsername') || '';
+        const userId = localStorage.getItem('userId') || '';
+        
+        if (!username || !userId || userId === "undefined" || userId === "null") {
+            alert('登录状态已失效，请重新登录！');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        const targetUrl = `game-room.html?username=${encodeURIComponent(username)}&roomId=${encodeURIComponent(roomId)}&roomName=${encodeURIComponent(roomName)}&scriptId=${encodeURIComponent(scriptId)}`;
+        window.location.href = targetUrl;
+    }
+
+    loadPublicRooms();
+</script>
+</body>
+</html>

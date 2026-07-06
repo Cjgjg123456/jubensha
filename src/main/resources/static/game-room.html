@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, max-age=0">
+    <title>剧遇 - 等待房间</title>
+    <!-- Vosk 语音识别已禁用，使用微信风格语音消息 -->
+    <!-- <script type="application/javascript" src="vosk.js"></script> -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft Yahei", sans-serif; }
+        body { width: 100vw; height: 100vh; background-color: #1a1a1a; color: #e0e0e0; display: flex; justify-content: center; align-items: center; padding: 20px; }
+
+        .container { display: flex; gap: 20px; width: 100%; max-width: 1400px; height: 100%; background: #2a2a2a; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3a3a3a; }
+        .room-main { flex: 2; display: flex; flex-direction: column; }
+        .room-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3a3a3a; padding-bottom: 20px; margin-bottom: 30px; }
+        .room-title-box h1 { font-size: 28px; color: #d4b475; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .room-title-box h1.ai-mode-text { color: #00e5ff; text-shadow: 0 0 10px rgba(0,229,255,0.5); }
+        .room-title-box p { font-size: 16px; color: #aaa; }
+        .back-btn { background: #b89758; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 15px; font-weight: bold; }
+        .back-btn:hover { background: #d4b475; transform: translateY(-2px); }
+
+        .seats-container { flex: 1; display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 20px; padding: 20px; overflow-y: auto; }
+        .player-seat { width: 140px; height: 170px; background: #333; border: 2px solid #444; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; transition: 0.3s; }
+        .player-seat.occupied { border: 2px solid #b89758; background: rgba(184, 151, 88, 0.1); }
+        .player-seat.occupied.ai-seat { border: 2px solid #00e5ff; background: rgba(0,229,255,0.1); }
+        .player-seat:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .seat-avatar { width: 70px; height: 70px; border-radius: 50%; background: #444; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #666; overflow: hidden; border: 3px solid #555; }
+        .occupied .seat-avatar { border-color: #b89758; color: #fff; font-weight: bold; }
+        .occupied.ai-seat .seat-avatar { border-color: #00e5ff; }
+        .seat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .seat-name { font-size: 14px; color: #888; text-align: center; padding: 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .occupied .seat-name { color: #fff; font-weight: bold; }
+        .occupied.ai-seat .seat-name { color: #00e5ff; }
+        .ready-badge { position: absolute; top: -10px; right: -10px; background: #28a745; color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 12px; display: none; box-shadow: 0 2px 8px rgba(40,167,69,0.4); }
+        .occupied.ready .ready-badge { display: block; }
+        .occupied.ai-seat.ready .ready-badge { background: #00b4db; box-shadow: 0 0 8px rgba(0,229,255,0.6); }
+
+        .action-bar { margin-top: 20px; text-align: center; }
+        .start-btn { padding: 14px 45px; font-size: 18px; font-weight: bold; border-radius: 8px; border: none; background: #b89758; color: #fff; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(184,151,88,0.4); }
+        .start-btn:hover { background: #d4b475; transform: translateY(-3px); box-shadow: 0 6px 20px rgba(212,180,117,0.6); }
+        .start-btn.ai-ready-btn { background: linear-gradient(135deg, #00b4db, #0083b0); box-shadow: 0 4px 15px rgba(0,180,219,0.4); animation: pulseBtn 2s infinite; }
+        @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); box-shadow: 0 8px 25px rgba(0,229,255,0.6); } 100% { transform: scale(1); } }
+
+        .room-chat { flex: 1; background: #222; border-radius: 12px; display: flex; flex-direction: column; border: 1px solid #3a3a3a; }
+        .chat-header { padding: 20px; border-bottom: 1px solid #3a3a3a; font-size: 18px; font-weight: bold; color: #d4b475; display: flex; justify-content: space-between;}
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .msg-sys { text-align: center; color: #888; font-size: 13px; margin: 10px 0;}
+        .msg-item { display: flex; flex-direction: column; animation: fadeIn 0.3s forwards; }
+        .msg-name { font-size: 12px; color: #aaa; margin-bottom: 3px; }
+        .msg-bubble { background: #333; padding: 10px 15px; border-radius: 10px; width: fit-content; max-width: 80%; font-size: 14px; border-left: 3px solid #b89758; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        .chat-composer { border-top: 1px solid #3a3a3a; padding: 12px 15px 15px; display: flex; flex-direction: column; gap: 8px; background: #1a1a1a; }
+        .chat-input-hint { font-size: 11px; color: rgba(255,255,255,0.45); min-height: 16px; line-height: 1.3; padding: 0 2px; }
+        .chat-input-hint.warn { color: #ffb74d; }
+        .chat-input-hint.err { color: #ff8a80; }
+        .chat-input { display: flex; gap: 10px; align-items: stretch; }
+        .chat-input input#chatInput { flex: 1; min-width: 0; background: #333; border: 1px solid #444; color: #fff; padding: 12px 14px; border-radius: 8px; outline: none; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+        .chat-input input#chatInput:focus { border-color: #b89758; box-shadow: 0 0 0 2px rgba(184,151,88,0.2); }
+        .chat-input input#chatInput:disabled { opacity: 0.65; cursor: not-allowed; }
+        .btn-voice { flex-shrink: 0; width: 45px; height: 45px; border: 1px solid #444; background: #333; color: #fff; border-radius: 50%; cursor: pointer; font-size: 20px; line-height: 1; transition: all 0.3s; display: flex; align-items: center; justify-content: center; }
+        .btn-voice:hover:not(:disabled) { background: #444; transform: scale(1.05); }
+        .btn-voice:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-voice.voice-recording { background: rgba(255,51,51,0.35); border-color: #ff5252; box-shadow: 0 0 16px rgba(255,82,82,0.35); animation: pulseRec 1.2s ease-in-out infinite; }
+        .btn-voice.voice-busy { background: rgba(255,152,0,0.25); border-color: #ff9800; }
+        #recordVoiceBtn.recording-active { background: linear-gradient(135deg, #ff5252, #d32f2f); border-color: #ff1744; box-shadow: 0 0 20px rgba(255,23,68,0.6); animation: recordingPulse 0.8s ease-in-out infinite; transform: scale(1.1); }
+        @keyframes recordingPulse { 0%, 100% { box-shadow: 0 0 15px rgba(255,23,68,0.4); } 50% { box-shadow: 0 0 30px rgba(255,23,68,0.8); } }
+        @keyframes playingWave { 0%, 100% { height: 12px; } 50% { height: 20px; } }
+        @keyframes pulseRec { 0%, 100% { box-shadow: 0 0 12px rgba(255,82,82,0.25); } 50% { box-shadow: 0 0 22px rgba(255,82,82,0.5); } }
+        .btn-send { flex-shrink: 0; padding: 0 22px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; color: #fff; background: #b89758; box-shadow: 0 4px 14px rgba(184,151,88,0.35); transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s; }
+        .btn-send:hover:not(:disabled) { transform: translateY(-1px); background: #d4b475; box-shadow: 0 6px 18px rgba(212,180,117,0.45); }
+        .btn-send:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+        /* ====== 角色选择弹窗样式 ====== */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .modal-content { background: #2a2a2a; width: 650px; max-height: 85vh; border-radius: 15px; padding: 30px; border: 1px solid #b89758; box-shadow: 0 15px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; }
+        .modal-title { font-size: 24px; color: #d4b475; font-weight: bold; margin-bottom: 10px; text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .modal-subtitle { font-size: 13px; color: #888; text-align: center; margin-bottom: 20px; }
+
+        .role-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 5px; }
+        .role-list::-webkit-scrollbar { width: 6px; }
+        .role-list::-webkit-scrollbar-thumb { background: rgba(184,151,88,0.3); border-radius: 3px; }
+
+        .role-card { display: flex; gap: 15px; background: #333; padding: 15px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s ease; align-items: center; position: relative; }
+        .role-card:hover:not(.role-unavailable):not(.role-selected) { border-color: #d4b475; background: rgba(212,180,117,0.1); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(212,180,117,0.2); }
+        .role-card.role-selected { border-color: #b89758; background: linear-gradient(135deg, rgba(184,151,88,0.2), rgba(184,151,88,0.1)); box-shadow: 0 0 20px rgba(184,151,88,0.4); transform: scale(1.02); }
+        .role-card.role-unavailable { opacity: 0.4; cursor: not-allowed; border-color: rgba(255,255,255,0.05); background: rgba(0,0,0,0.3); filter: grayscale(80%) brightness(0.6); }
+        .role-card.role-unavailable:hover { transform: none; box-shadow: none; }
+        .role-card img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #555; transition: all 0.3s ease; }
+        .role-card.role-selected img { border-color: #b89758; box-shadow: 0 0 15px rgba(184,151,88,0.6); transform: scale(1.1); }
+        .role-card.role-unavailable img { filter: grayscale(100%) brightness(0.5); }
+        
+        .role-status { position: absolute; top: 10px; right: 10px; font-size: 12px; padding: 3px 8px; border-radius: 10px; }
+        .role-status.role-status-selected { background: #b89758; color: #fff; }
+        .role-status.role-status-taken { background: #666; color: #aaa; }
+        
+        .role-info { flex: 1; }
+        .role-info h4 { color: #fff; margin-bottom: 5px; font-size: 18px; }
+        .role-info p { color: #aaa; font-size: 13px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .role-info .role-taken-by { font-size: 12px; color: #d4b475; margin-top: 5px; }
+
+        .modal-btns { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+        .btn-cancel { padding: 10px 30px; background: #444; border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        .btn-cancel:hover { background: #555; }
+        .btn-confirm-role { padding: 10px 35px; background: #b89758; border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(184,151,88,0.4); }
+        .btn-confirm-role:hover:not(:disabled) { transform: translateY(-2px); background: #d4b475; box-shadow: 0 5px 20px rgba(212,180,117,0.5); }
+        .btn-confirm-role:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 玩家座位上显示已选角色 */
+        .seat-role { font-size: 11px; color: #d4b475; margin-top: 3px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding: 0 5px; }
+        .occupied .seat-role { color: #d4b475; }
+        .occupied.ai-seat .seat-role { color: #00e5ff; }
+        
+        /* AI座位已被选择后的样式 */
+        .player-seat.ai-seat.role-taken {
+            opacity: 0.5;
+            border: 2px dashed rgba(184, 151, 88, 0.5);
+        }
+        .player-seat.ai-seat.role-taken .seat-role {
+            color: #d4b475;
+            font-size: 10px;
+        }
+        
+        /* 当前玩家已选择角色的样式 */
+        .player-seat.role-selected {
+            border: 2px solid #b89758;
+            background: rgba(184, 151, 88, 0.15);
+        }
+        .player-seat.role-selected .ready-badge {
+            background: #b89758;
+        }
+        
+        /* 录音按钮样式 */
+        .btn-voice {
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-voice:hover {
+            background: #444;
+            transform: scale(1.1);
+        }
+        .btn-voice.recording-active {
+            background: rgba(255, 82, 82, 0.8);
+            border-color: #ff5252;
+            animation: pulse-recording 1s infinite;
+        }
+        @keyframes pulse-recording {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 82, 82, 0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="room-main">
+        <div class="room-header">
+            <div class="room-title-box">
+                <h1 id="displayRoomName">加载中...</h1>
+                <p>当前剧本：《<span id="displayScriptName">---</span>》 | 人数: <span id="displayPlayerCount" style="color:#ffcc00; font-weight:bold;">1/?</span> | 房间号: <span style="font-family: monospace;">#8848</span></p>
+            </div>
+            <button class="back-btn" onclick="leaveRoom()">解散房间</button>
+        </div>
+        <div class="seats-container" id="seatsContainer"></div>
+        <div class="action-bar">
+            <button class="start-btn ai-ready-btn" id="startGameBtn" onclick="openRoleModal()">🎭 选择角色</button>
+            <!-- ✅ 房主专用：开始游戏按钮 -->
+            <button class="start-btn" id="hostStartGameBtn" onclick="hostStartGame()" style="display: none; background: linear-gradient(135deg, #ff6b6b, #ee5a6f); margin-left: 10px;">🚀 开始游戏</button>
+        </div>
+    </div>
+
+    <div class="room-chat">
+        <div class="chat-header">
+            <span>房间频道</span>
+            <span id="modeTag" style="font-size:12px; background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:10px;">🌐 联机模式</span>
+        </div>
+        <div class="chat-messages" id="chatBox">
+            <div class="msg-sys" style="color: #ff9900;" id="sysWelcomeMsg">系统：您创建了房间，请等待其他玩家加入。</div>
+        </div>
+        <div class="chat-composer">
+            <div class="chat-input-hint" id="chatInputHint" aria-live="polite"></div>
+            <div class="chat-input">
+                <input type="text" id="chatInput" placeholder="发句语音或文字打个招呼…" maxlength="500" autocomplete="off" enterkeyhint="send">
+                <button type="button" id="voskVoiceBtn" class="btn-voice" title="点击开始离线语音转文字（需允许麦克风权限）" aria-label="语音转文字">🎤</button>
+                <button type="button" id="recordVoiceBtn" class="btn-voice" title="点击录音5秒后自动发送" aria-label="点击录音">🎙️</button>
+                <button type="button" id="sendBtn" class="btn-send" onclick="sendMessage()" title="发送 (Enter)">发送</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="roleModal">
+    <div class="modal-content">
+        <div class="modal-title">🎭 请选择您想扮演的角色</div>
+        <div class="modal-subtitle" id="roleModalSubtitle">单击选择角色，双击已选角色取消选择</div>
+        <div class="role-list" id="roleListContainer">
+            <div style="text-align:center; color:#aaa; padding: 20px;">正在加载角色列表...</div>
+        </div>
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="closeRoleModal()">取消</button>
+            <button class="btn-confirm-role" id="confirmRoleBtn" onclick="confirmSelectedRole()" disabled>确认选择</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentMode = 'online';
+    const API_BASE = '/api/game';
+    let targetScriptId = null;
+    let availableRoles = [];
+    let selectedRoleId = null;
+    let lastClickTime = {};
+    let speechRecognition = null;
+    let isListening = false;
+
+    function initSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+            console.log('[语音识别] 浏览器不支持 Web Speech API');
+            return false;
+        }
+        
+        speechRecognition = new SpeechRecognition();
+        speechRecognition.continuous = false;
+        speechRecognition.interimResults = true;
+        speechRecognition.lang = 'zh-CN';
+        
+        speechRecognition.onstart = function() {
+            console.log('[语音识别] 开始识别...');
+            const voskBtn = document.getElementById('voskVoiceBtn');
+            if (voskBtn) {
+                voskBtn.classList.add('recording-active');
+                voskBtn.innerHTML = '⏹️';
+                voskBtn.title = '点击停止语音识别';
+            }
+        };
+        
+        speechRecognition.onresult = function(event) {
+            let finalTranscript = '';
+            
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                }
+            }
+            
+            const chatInput = document.getElementById('chatInput');
+            if (finalTranscript) {
+                chatInput.value = finalTranscript;
+                chatInput.focus();
+                console.log('[语音识别] 识别结果:', finalTranscript);
+            }
+        };
+        
+        speechRecognition.onerror = function(event) {
+            console.error('[语音识别] 错误:', event.error);
+            stopSpeechRecognition();
+            
+            if (event.error === 'not-allowed') {
+                alert('请允许使用麦克风权限以使用语音识别功能');
+            }
+        };
+        
+        speechRecognition.onend = function() {
+            stopSpeechRecognition();
+        };
+        
+        return true;
+    }
+
+    function stopSpeechRecognition() {
+        isListening = false;
+        const voskBtn = document.getElementById('voskVoiceBtn');
+        if (voskBtn) {
+            voskBtn.classList.remove('recording-active');
+            voskBtn.innerHTML = '🎤';
+            voskBtn.title = '点击开始语音转文字（需允许麦克风权限）';
+        }
+    }
+
+    function getAvatarUrl(name, originalUrl) {
+        if (originalUrl && !originalUrl.includes('default_role.jpg') && !originalUrl.includes('placeholder')) {
+            return originalUrl;
+        }
+        return getInitialsAvatar(name);
+    }
+
+    function getInitialsAvatar(name) {
+        const colors = ['#4CAF50', '#2196F3', '#FF9800', '#F44336', '#9C27B0', '#00BCD4', '#FF5722', '#607D8B'];
+        const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const color = colors[hash % colors.length];
+        const initials = name.slice(0, 2).toUpperCase();
+        return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='15' fill='${color}'/%3E%3Ctext x='50' y='58' text-anchor='middle' font-size='40' fill='white' font-weight='bold'%3E${initials}%3C/text%3E%3C/svg%3E`;
+    }
+
+    let refreshTimer = null;
+let currentRoomId = null;
+
+window.onload = async function() {
+    // 页面初始化
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomName = urlParams.get('roomName') || '专属房间';
+    const scriptName = urlParams.get('script') || '未命名剧本';
+    const urlUsername = urlParams.get('username');
+    const storedUsername = localStorage.getItem('loginUsername');
+    const username = urlUsername || storedUsername || '房主';
+    if (urlUsername && urlUsername !== storedUsername) {
+        localStorage.setItem('loginUsername', urlUsername);
+    }
+    currentRoomId = urlParams.get('roomId');
+
+    const idParam = urlParams.get('scriptId');
+    if (!idParam || idParam === "undefined" || idParam === "null") {
+        alert("系统错误：剧本ID获取失败，请返回大厅重新选择！");
+        window.location.href = 'room.html';
+        return;
+    }
+
+    targetScriptId = parseInt(idParam);
+    currentMode = urlParams.get('mode') || 'online';
+
+    document.getElementById('displayRoomName').innerText = roomName;
+    document.getElementById('displayScriptName').innerText = scriptName;
+    
+    if (currentRoomId) {
+        document.getElementById('displayPlayerCount').parentElement.innerHTML = `人数: <span id="displayPlayerCount" style="color:#ffcc00; font-weight:bold;">加载中...</span> | 房间号: <span style="font-family: monospace;">#${currentRoomId}</span>`;
+    }
+
+    try {
+        const userIdStr = localStorage.getItem('userId');
+
+        let detailUrl = `${API_BASE}/detail?scriptId=${targetScriptId}`;
+        if (userIdStr && userIdStr !== "undefined" && userIdStr !== "null") {
+            detailUrl += `&userId=${userIdStr}`;
+        }
+
+        const detailRes = await fetch(detailUrl).then(r => r.json());
+        if (detailRes.success && detailRes.data) {
+            const script = detailRes.data.script;
+            availableRoles = detailRes.data.roles || [];
+            let defaultTotalSeats = script.playerCount || availableRoles.length || 3;
+            
+            if (currentMode === 'online' && currentRoomId) {
+                await updateRoomStatus(defaultTotalSeats, username, currentRoomId);
+                refreshTimer = setInterval(() => {
+                    updateRoomStatus(defaultTotalSeats, username, currentRoomId);
+                }, 3000);
+                startChatRefresh();
+                initSocket();
+            } else {
+                renderRoomStatus(defaultTotalSeats, username, currentMode === 'ai' ? defaultTotalSeats : 1, []);
+            }
+        } else {
+            console.error('[game-room] 获取剧本详情失败:', detailRes);
+            alert("获取剧本详情失败！");
+        }
+    } catch(e) {
+        console.error('[game-room] 网络异常:', e);
+        alert("网络异常，无法获取剧本数据");
+    }
+}
+
+let currentHostId = null;
+
+async function updateRoomStatus(totalSeats, username, roomId) {
+    if (currentMode === 'online' && roomId) {
+        try {
+            const roomRes = await fetch('/api/online/rooms').then(r => r.json());
+            if (roomRes.success && roomRes.data) {
+                const room = roomRes.data.find(r => r.roomId === roomId);
+                if (room) {
+                    // ✅ 修复：只有当房间状态为"PLAYING"（游戏中）时才自动跳转
+                    if (room.status === 'PLAYING') {
+                        if (refreshTimer) clearInterval(refreshTimer);
+                        stopChatRefresh();
+                        window.location.href = `play.html?gameId=${room.gameId}&roomId=${roomId}`;
+                        return;
+                    }
+
+                    const serverTotalSeats = room.maxPlayers || totalSeats;
+                    const serverPlayerCount = room.playerCount || room.players.length || 1;
+                    currentHostId = room.hostId || null;
+                    
+                    // ✅ 更新房间标题和人数显示（从数据库获取）
+                    document.getElementById('displayRoomName').innerText = room.roomName || '未知房间';
+                    document.getElementById('displayPlayerCount').innerText = `${serverPlayerCount}/${serverTotalSeats}`;
+                    
+                    // ✅ 更新房间号显示
+                    const playerCountEl = document.getElementById('displayPlayerCount');
+                    if (playerCountEl && playerCountEl.parentElement) {
+                        playerCountEl.parentElement.innerHTML = `人数: <span id="displayPlayerCount" style="color:#ffcc00; font-weight:bold;">${serverPlayerCount}/${serverTotalSeats}</span> | 房间号: <span style="font-family: monospace;">#${room.roomId}</span>`;
+                    }
+                    
+                    renderRoomStatus(serverTotalSeats, username, serverPlayerCount, room.players || []);
+                } else {
+                    console.error('[房间状态检查] 房间不存在:', roomId);
+                    alert("房间不存在或已过期，请返回大厅重新创建房间！");
+                    window.location.href = 'room.html';
+                    return;
+                }
+            } else {
+                renderRoomStatus(totalSeats, username, 1, []);
+            }
+        } catch(e) {
+            console.error('[房间状态] 更新失败:', e);
+            renderRoomStatus(totalSeats, username, 1, []);
+        }
+    }
+}
+
+    function renderRoomStatus(totalSeats, username, currentPlayerCount, roomPlayers) {
+        const seatsContainer = document.getElementById('seatsContainer');
+        let seatsHtml = '';
+
+        if (currentMode === 'ai') {
+            document.getElementById('displayRoomName').classList.add('ai-mode-text');
+            document.getElementById('modeTag').innerHTML = '🤖 AI 沉浸模式';
+            document.getElementById('modeTag').style.color = '#00e5ff';
+            document.getElementById('modeTag').style.background = 'rgba(0,229,255,0.1)';
+            document.getElementById('displayPlayerCount').innerText = `${totalSeats}/${totalSeats}`;
+
+            document.getElementById('sysWelcomeMsg').innerText = "系统：已连接大模型引擎，AI剧友已落座，随时发车！";
+            document.getElementById('sysWelcomeMsg').style.color = "#00e5ff";
+
+            seatsHtml += `
+                <div class="player-seat occupied ready">
+                    <div class="ready-badge">已准备</div>
+                    <div class="seat-avatar"><img src="${getAvatarUrl(username, null)}" onerror="this.src='';"></div>
+                    <div class="seat-name">${username} (我)</div>
+                    <div class="seat-role">等待选择角色</div>
+                </div>`;
+
+            // ✅ AI 模式：为每个座位分配真实的角色
+            if (availableRoles && availableRoles.length > 0) {
+                for (let i = 0; i < Math.min(totalSeats - 1, availableRoles.length); i++) {
+                    const role = availableRoles[i];
+                    const roleAvatar = role.avatar || getAvatarUrl(role.name, null);
+                    seatsHtml += `
+                        <div class="player-seat occupied ai-seat ready">
+                            <div class="ready-badge">AI 准备</div>
+                            <div class="seat-avatar"><img src="${roleAvatar}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2745%27 fill=%27%2300e5ff%27/%3E%3Ctext x=%2750%27 y=%2755%27 text-anchor=%27middle%27 font-size=%2730%27 fill=%27white%27%3E${role.name.charAt(0)}%3C/text%3E%3C/svg%3E';"></div>
+                            <div class="seat-name">🤖 ${role.name}</div>
+                            <div class="seat-role">🎭 ${role.name}</div>
+                        </div>`;
+                }
+            } else {
+                // 如果没有角色信息，显示默认AI座位
+                for (let i = 1; i < totalSeats; i++) {
+                    seatsHtml += `
+                        <div class="player-seat occupied ai-seat ready">
+                            <div class="ready-badge">AI 准备</div>
+                            <div class="seat-avatar"><img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2745%27 fill=%27%2300e5ff%27/%3E%3Ctext x=%2750%27 y=%2755%27 text-anchor=%27middle%27 font-size=%2730%27 fill=%27white%27%3EAI%3C/text%3E%3C/svg%3E"></div>
+                            <div class="seat-name">🤖 AI玩家 ${i}号位</div>
+                            <div class="seat-role">AI 角色</div>
+                        </div>`;
+                }
+            }
+            seatsContainer.innerHTML = seatsHtml;
+
+            // ✅ AI 模式：显示角色选择按钮
+            const startBtn = document.getElementById('startGameBtn');
+            const hostStartBtn = document.getElementById('hostStartGameBtn');
+            
+            if (availableRoles.length > 0) {
+                startBtn.innerText = "🎭 选择角色";
+                startBtn.title = '点击选择你的角色';
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+                startBtn.style.cursor = 'pointer';
+                startBtn.classList.remove('ai-ready-btn');
+            } else {
+                startBtn.innerText = "⚠️ 该剧本暂无角色";
+                startBtn.disabled = true;
+                startBtn.style.opacity = '0.5';
+                startBtn.style.cursor = 'not-allowed';
+            }
+            
+            // ✅ AI 模式：显示开始游戏按钮（房主专用）
+            hostStartBtn.style.display = 'inline-block';
+            hostStartBtn.innerText = "🚀 开始游戏";
+            hostStartBtn.disabled = false;
+            hostStartBtn.style.opacity = '1';
+
+        } else {
+            document.getElementById('displayPlayerCount').innerText = `${currentPlayerCount}/${totalSeats}`;
+            
+            if (roomPlayers && roomPlayers.length > 0) {
+                roomPlayers.forEach((player, index) => {
+                    const isMe = player.username === username;
+                    const avatarUrl = player.avatar && player.avatar !== '' ? player.avatar : getAvatarUrl(player.username, null);
+                    const hasRole = player.roleId && player.roleName;
+                    seatsHtml += `
+                        <div class="player-seat occupied ${player.ready ? 'ready' : ''}">
+                            ${player.ready ? '<div class="ready-badge">已准备</div>' : ''}
+                            <div class="seat-avatar"><img src="${avatarUrl}" onerror="this.src=\`data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%231a2a5a'/%3E%3Ctext x='50' y='55' text-anchor='middle' font-size='30' fill='white'%3E${player.username.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E\`;"></div>
+                            <div class="seat-name">${player.username}${isMe ? ' (我)' : ''}</div>
+                            ${hasRole ? `<div class="seat-role">🎭 ${player.roleName}</div>` : ''}
+                        </div>`;
+                });
+                
+                for (let i = roomPlayers.length; i < totalSeats; i++) {
+                    seatsHtml += `
+                        <div class="player-seat">
+                            <div class="seat-avatar">?</div>
+                            <div class="seat-name">等待加入...</div>
+                        </div>`;
+                }
+            } else {
+                seatsHtml += `
+                    <div class="player-seat occupied ready">
+                        <div class="ready-badge">已准备</div>
+                        <div class="seat-avatar"><img src="images/avatar_1771915686380_60dfede0789e6e876c73b9d77b1b54c8.webp" onerror="this.src='';"></div>
+                        <div class="seat-name">${username} (我)</div>
+                    </div>`;
+                for (let i = 1; i < totalSeats; i++) {
+                    seatsHtml += `
+                        <div class="player-seat">
+                            <div class="seat-avatar">?</div>
+                            <div class="seat-name">等待加入...</div>
+                        </div>`;
+                }
+            }
+            
+            // ✅ 检查当前用户是否已选择角色
+            const currentUserId = localStorage.getItem('userId');
+            const currentUser = roomPlayers ? roomPlayers.find(p => String(p.userId) === String(currentUserId)) : null;
+            
+            const startBtn = document.getElementById('startGameBtn');
+            if (currentUser && currentUser.roleId && currentUser.roleName) {
+                // ✅ 用户已选择角色，显示角色名
+                if (isCurrentUserHost()) {
+                    startBtn.innerText = `🎭 ${currentUser.roleName}`;
+                } else {
+                    startBtn.innerText = `🎭 ${currentUser.roleName} - 等待房主开始`;
+                }
+                startBtn.title = '点击重新选择角色';
+            } else {
+                // ✅ 用户未选择角色，显示默认文本
+                startBtn.innerText = "🎭 选择角色";
+                startBtn.title = '点击选择你的角色';
+            }
+            document.getElementById('startGameBtn').classList.remove('ai-ready-btn');
+            
+            // ✅ 所有玩家都可以点击按钮选择角色
+            startBtn.disabled = false;
+            startBtn.style.opacity = currentUser && currentUser.roleId ? '0.8' : '1';
+            startBtn.style.cursor = 'pointer';
+            startBtn.style.display = 'inline-block'; // ✅ 确保按钮始终显示
+
+            // ✅ 房主专用按钮：只有房主且所有人都选择了角色后才显示
+            const hostStartBtn = document.getElementById('hostStartGameBtn');
+            console.log('[按钮显示] currentMode:', currentMode, 'isHost:', isCurrentUserHost(), 'hostStartBtn:', hostStartBtn);
+            
+            if (currentMode === 'online' && isCurrentUserHost()) {
+                // 检查是否所有玩家都已选择角色
+                const allSelected = roomPlayers && roomPlayers.length > 0 && 
+                                   roomPlayers.every(p => p.roleId);
+                
+                console.log('[按钮显示] allSelected:', allSelected, 'currentPlayerCount:', currentPlayerCount, 'totalSeats:', totalSeats);
+                
+                if (allSelected && currentPlayerCount >= totalSeats) {
+                    hostStartBtn.style.display = 'inline-block';
+                    hostStartBtn.innerText = "🚀 开始游戏";
+                    hostStartBtn.disabled = false;
+                    hostStartBtn.style.opacity = '1';
+                    console.log('[按钮显示] 显示开始游戏按钮');
+                } else {
+                    hostStartBtn.style.display = 'inline-block';
+                    // ✅ 修复：先检查玩家是否已满，再检查角色选择
+                    if (currentPlayerCount < totalSeats) {
+                        hostStartBtn.innerText = `⏳ 等待玩家加入 (${totalSeats - currentPlayerCount}个空位)`;
+                    } else if (!allSelected) {
+                        const unselectedCount = roomPlayers ? roomPlayers.filter(p => !p.roleId).length : 0;
+                        hostStartBtn.innerText = `⏳ 等待所有玩家选择角色 (${unselectedCount}人未选)`;
+                    }
+                    hostStartBtn.disabled = true;
+                    hostStartBtn.style.opacity = '0.5';
+                    console.log('[按钮显示] 显示禁用的开始游戏按钮');
+                }
+            } else {
+                // 非房主时隐藏房主按钮
+                hostStartBtn.style.display = 'none';
+                console.log('[按钮显示] 隐藏房主按钮 - 非房主或非联机模式');
+            }
+
+            seatsContainer.innerHTML = seatsHtml;
+        }
+    }
+
+    function isCurrentUserHost() {
+        if (currentMode !== 'online') return true;
+        
+        const userId = localStorage.getItem('userId');
+        // ✅ 确保类型统一比较（userId 可能是字符串，currentHostId 可能是数字）
+        const isHost = String(userId) === String(currentHostId);
+        
+        console.log('[房主验证] userId:', userId, '(类型:', typeof userId + ')');
+        console.log('[房主验证] currentHostId:', currentHostId, '(类型:', typeof currentHostId + ')');
+        console.log('[房主验证] isHost:', isHost);
+        
+        return isHost;
+    }
+
+    window.openRoleModal = async function() {
+        if (availableRoles.length === 0) {
+            alert("该剧本尚未配置角色，无法开局！");
+            return;
+        }
+
+        // ✅ 获取当前用户ID和已选择的角色列表
+        const currentUserId = localStorage.getItem('userId');
+        const currentUsername = localStorage.getItem('loginUsername') || '玩家';
+        
+        let selectedRoleIds = {};
+        let roleTakenBy = {};
+        let myCurrentRoleId = null;
+
+        if (currentMode === 'online' && currentRoomId) {
+            const roomRes = await fetch('/api/online/rooms').then(r => r.json());
+            if (roomRes.success && roomRes.data) {
+                const room = roomRes.data.find(r => r.roomId === currentRoomId);
+                if (room) {
+                    currentHostId = room.hostId;
+                    
+                    // ✅ 收集其他玩家已选择的角色ID及选择者
+                    if (room.players && room.players.length > 0) {
+                        room.players.forEach(p => {
+                            if (p.roleId) {
+                                if (String(p.userId) === String(currentUserId)) {
+                                    myCurrentRoleId = p.roleId;
+                                    window.selectedRoleId = p.roleId;
+                                } else {
+                                    selectedRoleIds[p.roleId] = true;
+                                    roleTakenBy[p.roleId] = p.username;
+                                }
+                            }
+                        });
+                        console.log('[角色选择] 已被选择的角色:', selectedRoleIds);
+                        console.log('[角色选择] 角色选择者:', roleTakenBy);
+                    }
+                    
+                    // ✅ 只有房主可以触发AI填充
+                    if (isCurrentUserHost() && room.playerCount < room.maxPlayers) {
+                        if (!confirm(`当前房间只有 ${room.playerCount} 人，需要 ${room.maxPlayers} 人才能开始游戏。\n是否使用AI玩家补齐剩余位置？`)) {
+                            return;
+                        }
+
+                        const fillRes = await fetch(`/api/online/room/${currentRoomId}/fill-with-ai`, {
+                            method: 'POST'
+                        }).then(r => r.json());
+
+                        if (!fillRes.success) {
+                            alert("AI填充失败：" + (fillRes.msg || "未知错误"));
+                            return;
+                        }
+                        alert("✅ AI玩家已就位！");
+                        
+                        // 重新获取房间信息以更新角色列表
+                        const updatedRoomRes = await fetch('/api/online/rooms').then(r => r.json());
+                        if (updatedRoomRes.success && updatedRoomRes.data) {
+                            const updatedRoom = updatedRoomRes.data.find(r => r.roomId === currentRoomId);
+                            if (updatedRoom && updatedRoom.players) {
+                                selectedRoleIds = {};
+                                roleTakenBy = {};
+                                myCurrentRoleId = null;
+                                updatedRoom.players.forEach(p => {
+                                    if (p.roleId) {
+                                        if (String(p.userId) === String(currentUserId)) {
+                                            myCurrentRoleId = p.roleId;
+                                            window.selectedRoleId = p.roleId;
+                                        } else {
+                                            selectedRoleIds[p.roleId] = true;
+                                            roleTakenBy[p.roleId] = p.username;
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        const listContainer = document.getElementById('roleListContainer');
+        
+        // ✅ 生成角色列表，包含所有角色（已选和可选）
+        const rolesHtml = availableRoles.map(role => {
+            const isUnavailable = selectedRoleIds[role.roleId];
+            const isSelected = window.selectedRoleId === role.roleId;
+            const takenBy = roleTakenBy[role.roleId];
+            
+            // ✅ 已选择的角色添加特殊样式
+            let cardClass = 'role-card';
+            if (isSelected) {
+                cardClass += ' role-selected';
+            } else if (isUnavailable) {
+                cardClass += ' role-unavailable';
+            }
+            
+            return `
+                <div class="${cardClass}" 
+                     data-role-id="${role.roleId}"
+                     onclick="handleRoleClick(${role.roleId}, '${role.name}')"
+                     ondblclick="handleRoleDoubleClick(${role.roleId})">
+                    <img src="${getAvatarUrl(role.name, role.avatar)}" onerror="this.src=\`data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Ccircle cx='30' cy='30' r='28' fill='%23b89758'/%3E%3Ctext x='30' y='35' text-anchor='middle' font-size='20' fill='white'%3E角%3C/text%3E%3C/svg%3E\`;">
+                    <div class="role-info">
+                        <h4>${role.name}</h4>
+                        <p>${role.background || '暂无详细介绍'}</p>
+                        ${isUnavailable ? `<div class="role-taken-by">已被 ${takenBy} 选择</div>` : ''}
+                    </div>
+                    ${isSelected ? '<div class="role-status role-status-selected">✓ 已选择</div>' : ''}
+                    ${isUnavailable && !isSelected ? '<div class="role-status role-status-taken">已被选</div>' : ''}
+                </div>
+            `;
+        }).join('');
+
+        listContainer.innerHTML = rolesHtml;
+        
+        // ✅ 更新确认按钮状态
+        updateConfirmButton();
+        
+        // ✅ 更新副标题提示
+        const subtitle = document.getElementById('roleModalSubtitle');
+        if (myCurrentRoleId) {
+            const myRole = availableRoles.find(r => r.roleId === myCurrentRoleId);
+            subtitle.innerText = `您当前选择的角色: ${myRole ? myRole.name : '未知'} | 双击可取消选择`;
+        } else {
+            subtitle.innerText = '单击选择角色，双击已选角色取消选择';
+        }
+
+        document.getElementById('roleModal').style.display = 'flex';
+    }
+
+    function handleRoleClick(roleId, roleName) {
+        const currentUserId = localStorage.getItem('userId');
+        
+        // ✅ 检查角色是否已被其他玩家选择
+        if (currentMode === 'online' && currentRoomId) {
+            fetch('/api/online/rooms').then(r => r.json()).then(roomRes => {
+                if (roomRes.success && roomRes.data) {
+                    const room = roomRes.data.find(r => r.roomId === currentRoomId);
+                    if (room && room.players) {
+                        const roleTakenByOther = room.players.find(
+                            p => p.roleId === roleId && String(p.userId) !== String(currentUserId)
+                        );
+                        
+                        if (roleTakenByOther) {
+                            alert(`该角色已被 ${roleTakenByOther.username} 选择，请选择其他角色`);
+                            return;
+                        }
+                        
+                        // ✅ 角色可选，执行选择逻辑
+                        selectRole(roleId, roleName);
+                    }
+                }
+            });
+        } else {
+            selectRole(roleId, roleName);
+        }
+    }
+
+    function selectRole(roleId, roleName) {
+        // ✅ 如果点击的是已选择的角色，需要判断是单击还是双击
+        if (window.selectedRoleId === roleId) {
+            const now = Date.now();
+            const lastClick = lastClickTime[roleId] || 0;
+            
+            if (now - lastClick < 300) {
+                // ✅ 双击，取消选择
+                window.selectedRoleId = null;
+                delete lastClickTime[roleId];
+                updateRoleCards();
+                updateConfirmButton();
+                updateSubtitle();
+            } else {
+                // ✅ 单击，保持选择状态（等待可能的双击）
+                lastClickTime[roleId] = now;
+            }
+        } else {
+            // ✅ 选择新角色
+            window.selectedRoleId = roleId;
+            lastClickTime[roleId] = Date.now();
+            updateRoleCards();
+            updateConfirmButton();
+            updateSubtitle();
+        }
+    }
+
+    function handleRoleDoubleClick(roleId) {
+        // ✅ 双击取消选择
+        if (window.selectedRoleId === roleId) {
+            window.selectedRoleId = null;
+            delete lastClickTime[roleId];
+            updateRoleCards();
+            updateConfirmButton();
+            updateSubtitle();
+        }
+    }
+
+    function updateRoleCards() {
+        const roleCards = document.querySelectorAll('.role-card');
+        roleCards.forEach(card => {
+            const cardRoleId = parseInt(card.getAttribute('data-role-id'));
+            card.classList.remove('role-selected');
+            if (window.selectedRoleId === cardRoleId) {
+                card.classList.add('role-selected');
+            }
+        });
+    }
+
+    function updateConfirmButton() {
+        const confirmBtn = document.getElementById('confirmRoleBtn');
+        confirmBtn.disabled = !window.selectedRoleId;
+    }
+
+    function updateSubtitle() {
+        const subtitle = document.getElementById('roleModalSubtitle');
+        if (window.selectedRoleId) {
+            const selectedRole = availableRoles.find(r => r.roleId === window.selectedRoleId);
+            subtitle.innerText = `您选择的角色: ${selectedRole ? selectedRole.name : '未知'} | 双击可取消选择`;
+        } else {
+            subtitle.innerText = '单击选择角色，双击已选角色取消选择';
+        }
+    }
+
+    window.closeRoleModal = function() {
+        document.getElementById('roleModal').style.display = 'none';
+    }
+
+    window.confirmSelectedRole = async function() {
+        if (!window.selectedRoleId) {
+            alert("请先选择一个角色！");
+            return;
+        }
+        
+        try {
+            const userIdStr = localStorage.getItem('userId');
+            if (!userIdStr || userIdStr === "undefined") {
+                alert("登录状态已失效，请重新登录！");
+                window.location.href = 'login.html';
+                return;
+            }
+            const userId = parseInt(userIdStr);
+            const username = localStorage.getItem('loginUsername') || '玩家';
+            
+            // ✅ 获取角色名称
+            const selectedRole = availableRoles.find(r => r.roleId === window.selectedRoleId);
+            const roleName = selectedRole ? selectedRole.name : '未知角色';
+
+            // ✅ AI 模式或本地模式：直接更新 UI，不需要 WebSocket
+            if (currentMode === 'ai' || !currentRoomId) {
+                console.log('[角色选择] 本地/AI模式，直接更新UI:', { roleId: window.selectedRoleId, roleName });
+                
+                // 获取当前玩家座位
+                const seatsContainer = document.getElementById('seatsContainer');
+                const mySeat = seatsContainer.querySelector('.player-seat:not(.ai-seat)');
+                
+                if (mySeat) {
+                    // 更新当前玩家的角色显示
+                    const roleDiv = mySeat.querySelector('.seat-role');
+                    if (roleDiv) {
+                        roleDiv.innerText = `🎭 ${roleName}`;
+                        roleDiv.style.color = '#ff9966';
+                    }
+                    
+                    // 更新座位样式为已选择
+                    mySeat.classList.add('role-selected');
+                }
+                
+                // 如果是AI模式，标记AI座位中已选择的角色
+                if (currentMode === 'ai') {
+                    const aiSeats = seatsContainer.querySelectorAll('.player-seat.ai-seat');
+                    aiSeats.forEach((seat, index) => {
+                        const seatRoleName = seat.querySelector('.seat-name')?.textContent?.replace('🤖 ', '');
+                        if (seatRoleName === roleName) {
+                            seat.classList.add('role-taken');
+                            seat.style.opacity = '0.5';
+                            seat.querySelector('.seat-role').textContent = '⭕ 已被玩家选择';
+                        }
+                    });
+                }
+                
+                // 更新按钮显示
+                const startBtn = document.getElementById('startGameBtn');
+                startBtn.innerText = `🎭 ${roleName}`;
+                startBtn.title = '点击重新选择角色';
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+                
+                // 关闭弹窗
+                closeRoleModal();
+                return;
+            }
+
+            // ✅ 联机模式：通过 WebSocket 发送角色选择消息
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const selectRoleMsg = {
+                    type: 'SELECT_ROLE',
+                    userId: userId,
+                    roomId: currentRoomId,
+                    roleId: window.selectedRoleId,
+                    roleName: roleName
+                };
+                socket.send(JSON.stringify(selectRoleMsg));
+                console.log('[角色选择] 已发送:', selectRoleMsg);
+                
+                // ✅ 暂时关闭角色选择弹窗
+                closeRoleModal();
+            } else {
+                alert("WebSocket 未连接，无法选择角色。请刷新页面重试。");
+            }
+        } catch (error) {
+            console.error("[角色选择] 错误:", error);
+            alert("选择角色失败：" + error.message);
+        }
+    }
+
+    async function checkAllPlayersReady() {
+        if (!currentRoomId) return;
+        console.log('[检查准备状态] 开始检查所有玩家是否就绪');
+        
+        try {
+            const roomRes = await fetch('/api/online/rooms').then(r => r.json());
+            if (roomRes.success && roomRes.data) {
+                const room = roomRes.data.find(r => r.roomId === currentRoomId);
+                if (room) {
+                    const hostStartBtn = document.getElementById('hostStartGameBtn');
+                    const allSelected = room.players && room.players.length > 0 && 
+                                       room.players.every(p => p.roleId);
+                    const allPlayersJoined = room.playerCount >= room.maxPlayers;
+                    
+                    console.log('[检查准备状态] allSelected:', allSelected, 'allPlayersJoined:', allPlayersJoined, 'playerCount:', room.playerCount, 'maxPlayers:', room.maxPlayers);
+                    
+                    if (allSelected && allPlayersJoined) {
+                        hostStartBtn.style.display = 'inline-block';
+                        hostStartBtn.disabled = false;
+                        hostStartBtn.style.opacity = '1';
+                        hostStartBtn.innerText = "🚀 开始游戏";
+                        console.log('[检查准备状态] 所有玩家就绪，启用开始游戏按钮');
+                    } else {
+                        hostStartBtn.style.display = 'inline-block';
+                        // ✅ 修复：先检查玩家是否已满，再检查角色选择
+                        if (!allPlayersJoined) {
+                            hostStartBtn.innerText = `⏳ 等待玩家加入 (${room.maxPlayers - room.playerCount}个空位)`;
+                        } else if (!allSelected) {
+                            const unselectedCount = room.players ? room.players.filter(p => !p.roleId).length : 0;
+                            hostStartBtn.innerText = `⏳ 等待所有玩家选择角色 (${unselectedCount}人未选)`;
+                        }
+                        hostStartBtn.disabled = true;
+                        hostStartBtn.style.opacity = '0.5';
+                        console.log('[检查准备状态] 玩家未全部就绪，显示禁用的开始游戏按钮');
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('[检查准备状态] 错误:', error);
+        }
+    }
+
+    // ✅ 房主专用：开始游戏
+    window.hostStartGame = async function() {
+        console.log('[开始游戏] 按钮被点击');
+        if (!isCurrentUserHost()) {
+            alert("只有房主才能开始游戏！");
+            return;
+        }
+        console.log('[开始游戏] 身份验证通过，是房主');
+
+        const userIdStr = localStorage.getItem('userId');
+        if (!userIdStr || userIdStr === "undefined" || userIdStr === "null") {
+            alert("登录状态已失效，请重新登录！");
+            window.location.href = 'login.html';
+            return;
+        }
+        const userId = parseInt(userIdStr);
+        
+        // ✅ 验证userId是否有效
+        if (isNaN(userId) || userId <= 0) {
+            console.error('[开始游戏] userId无效:', userIdStr);
+            alert("用户ID无效，请重新登录！");
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // ✅ AI 模式或本地模式：直接通过 API 开始游戏
+        if (currentMode === 'ai' || !currentRoomId) {
+            try {
+                const modeText = !currentRoomId ? '本地' : 'AI';
+                console.log(`[开始游戏] ${modeText}模式，通过API开始游戏...`);
+                
+                // 检查是否已选择角色
+                if (!window.selectedRoleId) {
+                    alert("请先选择一个角色！");
+                    return;
+                }
+                
+                const startUrl = `${API_BASE}/start?userId=${userId}&scriptId=${targetScriptId}&roleId=${window.selectedRoleId}`;
+                console.log('[开始游戏] 请求URL:', startUrl);
+                
+                const response = await fetch(startUrl, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+                console.log('[开始游戏] 响应结果:', result);
+                
+                if (result.success && result.data) {
+                    const gameId = result.data.gameId;
+                    console.log('[开始游戏] 游戏创建成功，gameId:', gameId);
+                    alert("🚀 游戏即将开始！");
+                    // 统一跳转到 play.html
+                    window.location.href = `play.html?gameId=${gameId}&scriptId=${targetScriptId}&roleId=${window.selectedRoleId}`;
+                } else {
+                    alert("❌ 开始游戏失败：" + (result.msg || "未知错误"));
+                }
+            } catch (error) {
+                console.error('[开始游戏] 错误:', error);
+                alert("❌ 开始游戏失败：" + error.message);
+            }
+            return;
+        }
+
+        // ✅ 联机模式：通过 WebSocket 发送开始游戏消息
+        if (!socket) {
+            console.error('[开始游戏] WebSocket 未初始化');
+            alert("⚠️ WebSocket 未初始化，请刷新页面重试！");
+            return;
+        }
+        
+        if (socket.readyState !== WebSocket.OPEN) {
+            console.error('[开始游戏] WebSocket 未连接，当前状态:', socket.readyState);
+            alert("⚠️ WebSocket 未连接（状态码：" + socket.readyState + "），请刷新页面重试！");
+            return;
+        }
+        
+        const startGameMsg = {
+            type: 'START_GAME',
+            userId: userId,
+            roomId: currentRoomId
+        };
+        socket.send(JSON.stringify(startGameMsg));
+        console.log('[开始游戏] 已发送:', startGameMsg);
+        
+        // ✅ 显示提示信息
+        alert("🚀 游戏即将开始！所有玩家将被引导至游戏页面...");
+    }
+
+    window.leaveRoom = function() {
+        if(confirm("确定要解散/退出当前房间吗？")) {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+            }
+            stopChatRefresh();
+            window.location.href = `room.html`;
+        }
+    }
+
+    let chatRefreshTimer = null;
+
+    function setChatInputHint(text, tone) {
+        const el = document.getElementById('chatInputHint');
+        if (!el) return;
+        el.textContent = text || '';
+        el.classList.remove('warn', 'err');
+        if (tone === 'warn') el.classList.add('warn');
+        if (tone === 'err') el.classList.add('err');
+    }
+
+    function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // ====== 消息去重机制 ======
+    let sentMessageIds = new Set();
+    let lastMessageId = '';
+    
+    // ====== Socket 连接逻辑 ======
+    let socket = null;
+
+    function initSocket() {
+        if (!currentRoomId) {
+            console.warn('房间ID为空，跳过Socket连接');
+            return;
+        }
+        
+        try {
+            // 使用 WebSocket 连接服务器
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            const wsUrl = `${protocol}//${host}/ws`;
+            
+            console.log('尝试连接 Socket:', wsUrl);
+            socket = new WebSocket(wsUrl);
+            
+            socket.onopen = function() {
+                console.log('✅ Socket 连接成功');
+                const userId = localStorage.getItem('userId');
+                const username = localStorage.getItem('loginUsername');
+                
+                if (userId && currentRoomId) {
+                    socket.send(JSON.stringify({
+                        type: 'JOIN_ROOM',
+                        userId: userId,
+                        username: username,
+                        roomId: currentRoomId
+                    }));
+                    console.log('[Socket] 已发送 JOIN_ROOM 消息');
+                }
+            };
+            
+            socket.onmessage = function(event) {
+                const msg = JSON.parse(event.data);
+                console.log('📥 收到消息:', msg);
+
+                switch(msg.type) {
+                    case 'CHAT':
+                    case 'SERVER_CHAT':
+                        // 去重检查：如果是自己发送的消息且已记录，则跳过
+                        const isMe = String(msg.userId) === String(localStorage.getItem('userId'));
+                        if (isMe && msg.msgId && sentMessageIds.has(msg.msgId)) {
+                            console.log(`📝 WebSocket跳过重复消息: ${msg.msgId}`);
+                            break;
+                        }
+                        addChatMessage(msg.username, msg.content, isMe, msg.msgId);
+                        break;
+                    case 'ROLE_SELECT':
+                        updateRoleSelection(msg.userId, msg.roleId, msg.roleName);
+                        break;
+                    case 'ROLE_SELECT_RESULT':
+                        if (!msg.success) {
+                            alert("❌ " + msg.message);
+                        }
+                        break;
+                    case 'PLAYER_JOIN':
+                        console.log('玩家加入:', msg);
+                        break;
+                    case 'START_GAME_RESULT':
+                        console.log('[游戏开始] 收到消息:', msg);
+                        if (msg.success) {
+                            alert("🚀 " + msg.message);
+                            
+                            // ✅ 停止轮询和聊天刷新
+                            if (refreshTimer) clearInterval(refreshTimer);
+                            stopChatRefresh();
+                            
+                            // ✅ 获取自己的 gameId（优先用 playerGameIds，如果没有就用通用的）
+                            let gameId = msg.gameId;
+                            const currentUserId = localStorage.getItem('userId');
+                            if (msg.playerGameIds && currentUserId && msg.playerGameIds[currentUserId]) {
+                                gameId = msg.playerGameIds[currentUserId];
+                                console.log('[游戏开始] 使用专属 gameId:', gameId);
+                            } else {
+                                console.log('[游戏开始] 使用通用 gameId:', gameId);
+                            }
+                            
+                            // ✅ 跳转到游戏页面
+                            console.log('[游戏开始] 跳转到 play.html?gameId=' + gameId + '&roomId=' + currentRoomId);
+                            window.location.href = `play.html?gameId=${gameId}&roomId=${currentRoomId}`;
+                        } else {
+                            alert("❌ " + msg.message);
+                        }
+                        break;
+                }
+            };
+            
+            socket.onerror = function(error) {
+                console.error('❌ Socket 错误:', error);
+            };
+            
+            socket.onclose = function() {
+                console.log('🔌 Socket 连接关闭，3秒后尝试重连...');
+                setTimeout(initSocket, 3000);
+            };
+        } catch (error) {
+            console.error('❌ 建立 Socket 连接失败:', error);
+        }
+    }
+
+    function sendSocketMessage(data) {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(data));
+        } else {
+            console.warn('Socket 未连接，使用 REST API 发送');
+        }
+    }
+
+    function addChatMessage(username, content, isMe, msgId) {
+        // 去重检查：如果是自己发送的消息且已记录，则跳过
+        if (isMe && msgId && sentMessageIds.has(msgId)) {
+            console.log(`📝 跳过重复消息: ${msgId}`);
+            return;
+        }
+        // 记录消息ID
+        if (msgId) {
+            sentMessageIds.add(msgId);
+            // 最多保留100条记录，防止内存溢出
+            if (sentMessageIds.size > 100) {
+                sentMessageIds.clear();
+            }
+        }
+        
+        const chatBox = document.getElementById('chatBox');
+        const safeUser = escapeHtml(username);
+        
+        // 检查是否为语音消息（以 [VOICE] 开头）
+        const isVoiceMessage = content.startsWith('[VOICE]');
+        
+        let messageContent = '';
+        if (isVoiceMessage) {
+            // 解析语音消息格式: [VOICE]base64Data|duration 或 [VOICE]url|duration
+            const voiceData = content.substring(7); // 移除 "[VOICE]"
+            const parts = voiceData.split('|');
+            const voiceSource = parts[0];
+            const duration = parts[1] ? parseInt(parts[1]) : 0;
+            
+            // ✅ 判断是 Base64 还是 URL
+            const isBase64 = voiceSource.startsWith('data:audio');
+            const audioSrc = isBase64 ? voiceSource : voiceSource;
+            
+            messageContent = `
+                <div class="voice-message" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 8px 12px; background: rgba(255,255,255,0.1); border-radius: 8px; min-width: 120px;" onclick="playVoice('${audioSrc}', this)">
+                    <span style="font-size: 24px;">🔊</span>
+                    <span style="flex: 1;">${duration}''</span>
+                    <div class="voice-playing-indicator" style="display: none;">
+                        <span class="playing-bar" style="display: inline-block; width: 3px; height: 15px; margin: 0 1px; background: #ff6600; animation: playingWave 0.6s ease-in-out infinite;"></span>
+                        <span class="playing-bar" style="display: inline-block; width: 3px; height: 20px; margin: 0 1px; background: #ff6600; animation: playingWave 0.6s ease-in-out infinite 0.1s;"></span>
+                        <span class="playing-bar" style="display: inline-block; width: 3px; height: 12px; margin: 0 1px; background: #ff6600; animation: playingWave 0.6s ease-in-out infinite 0.2s;"></span>
+                    </div>
+                </div>
+            `;
+        } else {
+            const safeContent = escapeHtml(content);
+            messageContent = `<div class="msg-bubble" style="${isMe ? 'background: linear-gradient(135deg, #ff6600, #ff3300); color: #fff;' : ''}">${safeContent}</div>`;
+        }
+        
+        const msgHtml = `
+            <div class="msg-item" style="align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-top: 10px;">
+                <div class="msg-name">${safeUser}</div>
+                ${messageContent}
+            </div>
+        `;
+        
+        chatBox.innerHTML += msgHtml;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // ✅ 更新角色选择状态
+    function updateRoleSelection(userId, roleId, roleName) {
+        console.log('[角色选择] 玩家', userId, '选择了角色', roleName);
+        
+        // ✅ 检查是否是当前用户
+        const currentUserId = localStorage.getItem('userId');
+        if (String(userId) === String(currentUserId)) {
+            // ✅ 更新当前用户的按钮
+            const startBtn = document.getElementById('startGameBtn');
+            const hostStartBtn = document.getElementById('hostStartGameBtn');
+            
+            if (isCurrentUserHost()) {
+                // ✅ 房主：显示角色名，保持可点击（可重新选择）
+                startBtn.innerText = `🎭 ${roleName}`;
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+                startBtn.title = '点击重新选择角色';
+            } else {
+                // ✅ 普通玩家：显示"等待房主开始"
+                startBtn.innerText = `🎭 ${roleName} - 等待房主开始`;
+                startBtn.disabled = false;
+                startBtn.style.opacity = '0.8';
+                startBtn.title = '点击可重新选择角色';
+            }
+        }
+        
+        // ✅ 刷新房间状态以更新UI
+        if (currentMode === 'online' && currentRoomId) {
+            const username = localStorage.getItem('loginUsername') || '玩家';
+            updateRoomStatus(6, username, currentRoomId);
+            
+            // ✅ 如果是房主，检查是否所有玩家都已选择角色
+            if (isCurrentUserHost()) {
+                checkAllPlayersReady();
+            }
+        }
+    }
+
+    function startChatRefresh() {
+        chatRefreshTimer = setInterval(() => {
+            refreshChatMessages();
+        }, 2000);
+    }
+
+    function stopChatRefresh() {
+        if (chatRefreshTimer) {
+            clearInterval(chatRefreshTimer);
+            chatRefreshTimer = null;
+        }
+    }
+
+    window.sendMessage = async function() {
+        const input = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const text = input.value.trim();
+        if (!text) return;
+
+        const username = localStorage.getItem('loginUsername') || '我';
+        const userId = localStorage.getItem('userId') || '0';
+        const avatar = localStorage.getItem('avatarUrl') || '';
+
+        if (sendBtn) {
+            sendBtn.disabled = true;
+            sendBtn.textContent = '发送中';
+        }
+        input.disabled = true;
+
+        // 生成唯一消息ID（用于去重）
+        const msgId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        try {
+            // ✅ 优先使用 WebSocket 发送消息（联机模式）
+            if (socket && socket.readyState === WebSocket.OPEN && currentRoomId) {
+                // ✅ 先立即显示自己的消息（避免等待服务器回传）
+                addChatMessage(username, text, true, msgId);
+                
+                // 清空输入框
+                input.value = '';
+                setChatInputHint('');
+                
+                // 通过 WebSocket 发送给其他玩家（包含消息ID用于去重）
+                socket.send(JSON.stringify({
+                    type: 'CHAT',
+                    roomId: currentRoomId,
+                    userId: userId,
+                    username: username,
+                    avatar: avatar,
+                    content: text,
+                    msgId: msgId
+                }));
+                
+                // 同时调用 REST API 保存消息到数据库
+                fetch(`/api/online/room/${currentRoomId}/chat?userId=${userId}&username=${encodeURIComponent(username)}&avatar=${encodeURIComponent(avatar)}&content=${encodeURIComponent(text)}`, {
+                    method: 'POST'
+                }).catch(err => console.error('保存消息失败:', err));
+            } else if (currentRoomId) {
+                // ✅ WebSocket 未连接时，使用 REST API（联机模式）
+                const response = await fetch(`/api/online/room/${currentRoomId}/chat?userId=${userId}&username=${encodeURIComponent(username)}&avatar=${encodeURIComponent(avatar)}&content=${encodeURIComponent(text)}`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    input.value = '';
+                    await refreshChatMessages();
+                    setChatInputHint('');
+                } else {
+                    setChatInputHint(result.msg || '发送失败', 'err');
+                }
+            } else {
+                // ✅ 本地模式：直接显示消息（不发送到服务器）
+                addChatMessage(username, text, true, msgId);
+                input.value = '';
+                setChatInputHint('');
+                console.log('[本地模式] 消息已显示（仅本地可见）');
+            }
+        } catch (error) {
+            console.error('发送消息失败:', error);
+            setChatInputHint('网络异常，发送失败', 'err');
+        } finally {
+            input.disabled = false;
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '发送';
+            }
+        }
+    }
+
+    async function refreshChatMessages() {
+        const username = localStorage.getItem('loginUsername') || '我';
+        try {
+            const response = await fetch(`/api/online/room/${currentRoomId}/messages`);
+            const result = await response.json();
+            if (result.success && result.data) {
+                const messages = result.data;
+                const chatBox = document.getElementById('chatBox');
+                const lastMsgId = lastMessageId;
+                let hasNewMessages = false;
+                let newMessagesHtml = '';
+                let foundLastMsg = lastMsgId === null;
+                
+                for (let i = 0; i < messages.length; i++) {
+                    const msg = messages[i];
+                    const msgId = msg.id || msg.msgId || `${msg.username}-${msg.content}-${i}`;
+                    
+                    if (msg.username === '系统' || msg.username === 'system') {
+                        continue;
+                    }
+                    
+                    if (!foundLastMsg) {
+                        if (msgId === lastMsgId) {
+                            foundLastMsg = true;
+                        }
+                        continue;
+                    }
+                    
+                    const isMe = msg.username === username;
+                    if (isMe && sentMessageIds.has(msgId)) {
+                        continue;
+                    }
+                    
+                    hasNewMessages = true;
+                    lastMessageId = msgId;
+                    
+                    const nm = escapeHtml(msg.username);
+                    const ct = escapeHtml(msg.content);
+                    const isVoiceMessage = ct.startsWith('[VOICE]');
+                    let messageContent = '';
+                    
+                    if (isVoiceMessage) {
+                        const voiceData = ct.substring(7);
+                        const parts = voiceData.split('|');
+                        const voiceUrl = parts[0];
+                        const duration = parts[1] ? parseInt(parts[1]) : 0;
+                        messageContent = '<div class="voice-message" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 8px 12px; background: rgba(255,255,255,0.1); border-radius: 8px; min-width: 120px;" onclick="playVoice(\'' + voiceUrl + '\', this)"><span style="font-size: 24px;">🔊</span><span style="flex: 1;">' + duration + '\'\'</span></div>';
+                    } else {
+                        const style = isMe ? 'background: linear-gradient(135deg, #ff6600, #ff3300); color: #fff;' : '';
+                        messageContent = '<div class="msg-bubble" style="' + style + '">' + ct + '</div>';
+                    }
+                    
+                    const alignStyle = isMe ? 'flex-end' : 'flex-start';
+                    newMessagesHtml += '<div class="msg-item" style="align-items: ' + alignStyle + '; margin-top: 10px;"><div class="msg-name">' + nm + '</div>' + messageContent + '</div>';
+                }
+                
+                if (hasNewMessages && newMessagesHtml) {
+                    chatBox.innerHTML += newMessagesHtml;
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            }
+        } catch (error) {
+            console.error('刷新消息失败:', error);
+        }
+    }
+
+    // 播放语音消息
+    let currentPlayingAudio = null;
+    
+    function playVoice(audioSrc, element) {
+        console.log('[语音播放] 尝试播放:', audioSrc.substring(0, 50) + '...');
+        
+        // 如果正在播放，则停止
+        if (currentPlayingAudio) {
+            currentPlayingAudio.pause();
+            currentPlayingAudio.currentTime = 0;
+            currentPlayingAudio = null;
+            // 恢复所有按钮状态
+            document.querySelectorAll('.voice-msg').forEach(btn => {
+                btn.innerHTML = '🔊';
+                btn.style.background = 'rgba(255,255,255,0.1)';
+            });
+            return;
+        }
+        
+        // ✅ 创建音频对象并播放
+        const audio = new Audio();
+        
+        // ✅ 设置音频源（支持 Base64 和 URL）
+        if (audioSrc.startsWith('data:audio')) {
+            // Base64 格式
+            audio.src = audioSrc;
+        } else if (audioSrc.startsWith('blob:')) {
+            // Blob URL - 检查是否有效
+            try {
+                audio.src = audioSrc;
+            } catch (e) {
+                console.error('[语音播放] Blob URL 无效:', e);
+                element.innerHTML = '❌';
+                setTimeout(() => {
+                    element.innerHTML = '🔊';
+                }, 2000);
+                return;
+            }
+        } else {
+            // 其他 URL 格式
+            audio.src = audioSrc;
+        }
+        
+        currentPlayingAudio = audio;
+        
+        // 改变按钮状态为播放中
+        element.innerHTML = '⏸️';
+        element.style.background = 'rgba(0,229,255,0.3)';
+        
+        // ✅ 添加详细的错误处理
+        audio.addEventListener('error', (e) => {
+            console.error('[语音播放] 音频加载失败:', e);
+            console.error('[语音播放] 错误代码:', audio.error ? audio.error.code : 'unknown');
+            console.error('[语音播放] 错误消息:', audio.error ? audio.error.message : 'unknown');
+            
+            element.innerHTML = '❌';
+            element.style.background = 'rgba(255,82,82,0.3)';
+            currentPlayingAudio = null;
+            
+            setTimeout(() => {
+                element.innerHTML = '🔊';
+                element.style.background = 'rgba(255,255,255,0.1)';
+            }, 2000);
+        });
+        
+        // ✅ 使用 Promise 方式播放
+        audio.play().then(() => {
+            console.log('[语音播放] 开始播放');
+        }).catch(err => {
+            console.error('[语音播放] 播放失败:', err);
+            element.innerHTML = '❌';
+            element.style.background = 'rgba(255,82,82,0.3)';
+            currentPlayingAudio = null;
+            
+            setTimeout(() => {
+                element.innerHTML = '🔊';
+                element.style.background = 'rgba(255,255,255,0.1)';
+            }, 2000);
+        });
+        
+        // 播放结束后恢复状态
+        audio.onended = () => {
+            console.log('[语音播放] 播放结束');
+            element.innerHTML = '🔊';
+            element.style.background = 'rgba(255,255,255,0.1)';
+            currentPlayingAudio = null;
+        };
+    }
+    
+    // ========== 录音和语音功能 ==========
+    
+    // 录音相关变量
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recordingStartTime = 0;
+    let recordingTimer = null;
+    let isRecording = false;
+    let isStopping = false; // 防止重复停止的标志
+    
+    // 初始化录音按钮事件
+    function initVoiceButtons() {
+        const recordBtn = document.getElementById('recordVoiceBtn');
+        if (recordBtn) {
+            recordBtn.addEventListener('click', toggleRecording);
+        }
+        
+        const voskBtn = document.getElementById('voskVoiceBtn');
+        if (voskBtn) {
+            voskBtn.addEventListener('click', toggleVoskVoice);
+        }
+    }
+    
+    // 切换录音状态
+    async function toggleRecording() {
+        const recordBtn = document.getElementById('recordVoiceBtn');
+        
+        if (isRecording) {
+            stopRecording();
+        } else {
+            await startRecording();
+        }
+    }
+    
+    // 开始录音
+    async function startRecording() {
+        const recordBtn = document.getElementById('recordVoiceBtn');
+        
+        try {
+            // 请求麦克风权限
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // 创建录音器
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            
+            // 收集音频数据
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    audioChunks.push(e.data);
+                }
+            };
+            
+            // 录音停止时的处理
+            mediaRecorder.onstop = async () => {
+                // 防止重复执行
+                if (isStopping) {
+                    console.log('[录音] 已在停止过程中，忽略重复调用');
+                    return;
+                }
+                isStopping = true;
+                
+                try {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await sendVoiceMessage(audioBlob);
+                } catch (error) {
+                    console.error('[录音] 发送语音消息失败:', error);
+                    alert('发送语音消息失败: ' + error.message);
+                } finally {
+                    // 重置标志
+                    isStopping = false;
+                }
+                
+                // 停止所有轨道
+                stream.getTracks().forEach(track => track.stop());
+            };
+            
+            // 开始录音
+            mediaRecorder.start(100); // 每100ms发送一次数据
+            recordingStartTime = Date.now();
+            isRecording = true;
+            
+            // 更新按钮状态
+            recordBtn.classList.add('recording-active');
+            recordBtn.innerHTML = '⏹️';
+            recordBtn.title = '点击停止录音';
+            
+            // 启动录音计时器（5秒后自动停止）
+            recordingTimer = setTimeout(() => {
+                if (isRecording) {
+                    console.log('[录音] 录音超时，自动停止');
+                    stopRecording();
+                }
+            }, 5000);
+            
+            console.log('[录音] 开始录音');
+            
+        } catch (error) {
+            console.error('[录音] 启动录音失败:', error);
+            
+            if (error.name === 'NotAllowedError') {
+                alert('麦克风权限被拒绝，请允许麦克风权限后重试');
+            } else if (error.name === 'NotFoundError') {
+                alert('未检测到麦克风设备');
+            } else {
+                alert('无法启动录音: ' + error.message);
+            }
+        }
+    }
+    
+    // 停止录音
+    function stopRecording() {
+        const recordBtn = document.getElementById('recordVoiceBtn');
+        
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            console.log('[录音] 正在停止录音...');
+            mediaRecorder.stop();
+        } else {
+            console.log('[录音] 录音器未处于录音状态，无需停止');
+        }
+        
+        // 清除计时器
+        if (recordingTimer) {
+            clearTimeout(recordingTimer);
+            recordingTimer = null;
+        }
+        
+        isRecording = false;
+        
+        // 恢复按钮状态
+        if (recordBtn) {
+            recordBtn.classList.remove('recording-active');
+            recordBtn.innerHTML = '🎙️';
+            recordBtn.title = '点击录音5秒后自动发送';
+        }
+        
+        console.log('[录音] 停止录音完成');
+    }
+    
+    // 发送语音消息
+    async function sendVoiceMessage(audioBlob) {
+        const username = localStorage.getItem('loginUsername') || '我';
+        const userId = localStorage.getItem('userId') || '0';
+        const duration = Math.max(1, Math.round((Date.now() - recordingStartTime) / 1000));
+        
+        console.log('[语音] 准备发送语音消息，时长:', duration, '秒');
+        
+        // ✅ 关键修复：将 Blob 转换为 Base64，确保跨会话可用
+        const base64Audio = await blobToBase64(audioBlob);
+        
+        // 构造语音消息内容（使用 Base64 而非 blob URL）
+        const voiceContent = `[VOICE]${base64Audio}|${duration}`;
+        
+        // 通过 WebSocket 或 REST API 发送
+        if (socket && socket.readyState === WebSocket.OPEN && currentRoomId) {
+            // ✅ 联机模式：通过 WebSocket 发送
+            socket.send(JSON.stringify({
+                type: 'CHAT',
+                roomId: currentRoomId,
+                userId: userId,
+                username: username,
+                content: voiceContent
+            }));
+            
+            // 本地显示（避免等待服务器回传）
+            addChatMessage(username, voiceContent, true);
+            
+        } else if (currentMode === 'ai') {
+            // ✅ AI 模式：本地显示
+            addChatMessage(username, voiceContent, true);
+        } else {
+            // ✅ 本地模式：直接显示语音消息
+            addChatMessage(username, voiceContent, true);
+        }
+    }
+    
+    // 将 Blob 转换为 Base64
+    function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    
+    // ✅ Vosk 离线语音转文字功能（通过后端 Python 服务）
+    let isVoskRecording = false;
+    let voskAudioContext = null;
+    let voskMediaStreamSource = null;
+    let voskMediaRecorder = null;
+    let voskRecordedData = [];
+    
+    // WAV 编码相关
+    function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    }
+    
+    function floatTo16BitPCM(output, offset, input) {
+        for (let i = 0; i < input.length; i++, offset += 2) {
+            let s = Math.max(-1, Math.min(1, input[i]));
+            output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        }
+    }
+    
+    function encodeWAV(samples, sampleRate) {
+        let buffer = new ArrayBuffer(44 + samples.length * 2);
+        let view = new DataView(buffer);
+        
+        // RIFF identifier
+        writeString(view, 0, 'RIFF');
+        // file length
+        view.setUint32(4, 36 + samples.length * 2, true);
+        // RIFF type
+        writeString(view, 8, 'WAVE');
+        // format chunk identifier
+        writeString(view, 12, 'fmt ');
+        // format chunk length
+        view.setUint32(16, 16, true);
+        // sample format (raw)
+        view.setUint16(20, 1, true);
+        // channel count
+        view.setUint16(22, 1, true);
+        // sample rate
+        view.setUint32(24, sampleRate, true);
+        // byte rate (sample rate * block align)
+        view.setUint32(28, sampleRate * 2, true);
+        // block align (channel count * bytes per sample)
+        view.setUint16(32, 2, true);
+        // bits per sample
+        view.setUint16(34, 16, true);
+        // data chunk identifier
+        writeString(view, 36, 'data');
+        // data chunk length
+        view.setUint32(40, samples.length * 2, true);
+        
+        floatTo16BitPCM(view, 44, samples);
+        
+        return new Blob([view], { type: 'audio/wav' });
+    }
+
+    async function toggleVoskVoice() {
+        const voskBtn = document.getElementById('voskVoiceBtn');
+        const chatInput = document.getElementById('chatInput');
+        
+        if (!voskBtn || !chatInput) {
+            console.warn('[Vosk] 按钮或输入框未找到');
+            return;
+        }
+        
+        if (isVoskRecording) {
+            // 停止录音并发送到后端识别
+            stopVoskRecording();
+        } else {
+            // 开始录音
+            await startVoskRecording();
+        }
+    }
+
+    async function startVoskRecording() {
+        const voskBtn = document.getElementById('voskVoiceBtn');
+        const chatInputHint = document.getElementById('chatInputHint');
+        
+        try {
+            // 请求麦克风权限
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: { 
+                    sampleRate: 16000, 
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true
+                } 
+            });
+            
+            // 创建 AudioContext
+            voskAudioContext = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: 16000
+            });
+            
+            // 创建媒体流源
+            voskMediaStreamSource = voskAudioContext.createMediaStreamSource(stream);
+            
+            // 创建 ScriptProcessorNode 已废弃，但我们使用它来直接录制 WAV 格式，避免转换
+            voskScriptProcessor = voskAudioContext.createScriptProcessor(4096, 1, 1);
+            voskScriptProcessor.connect(voskAudioContext.destination);
+            
+            voskMediaStreamSource.connect(voskScriptProcessor);
+            
+            // 创建原始音频缓冲区
+            voskRecordedBuffers = [];
+            
+            voskScriptProcessor.onaudioprocess = (e) => {
+                const inputData = e.inputBuffer.getChannelData(0);
+                voskRecordedBuffers.push(new Float32Array(inputData));
+            };
+            
+            console.log('[Vosk] 开始录音 (ScriptProcessor 方式，直接录制 16kHz 单声道');
+            
+            isVoskRecording = true;
+            
+            // 更新UI状态
+            voskBtn.classList.add('recording-active');
+            voskBtn.innerHTML = '⏹️';
+            voskBtn.title = '点击停止并识别';
+            setChatInputHint('🎤 正在录音... 再次点击停止', 'recording');
+            
+            console.log('[Vosk] 开始录音 (MediaRecorder 方式)');
+            
+        } catch (error) {
+            console.error('[Vosk] 录音失败:', error);
+            
+            if (error.name === 'NotAllowedError') {
+                alert('❌ 请允许使用麦克风权限以使用语音识别功能');
+            } else if (error.name === 'NotFoundError') {
+                alert('❌ 未检测到麦克风设备');
+            } else {
+                alert('❌ 录音失败: ' + error.message);
+            }
+        }
+    }
+
+    function float32ToWav(buffers, sampleRate) {
+        // 合并所有缓冲区
+        let totalLength = 0;
+        for (let i = 0; i < buffers.length; i++) {
+            totalLength += buffers[i].length;
+        }
+        
+        const samples = new Float32Array(totalLength);
+        let offset = 0;
+        for (let i = 0; i < buffers.length; i++) {
+            samples.set(buffers[i], offset);
+            offset += buffers[i].length;
+        }
+        
+        // 创建 WAV 文件
+        const buffer = new ArrayBuffer(44 + samples.length * 2);
+        const view = new DataView(buffer);
+        
+        // WAV 头部
+        writeString(view, 0, 'RIFF');
+        view.setUint32(4, 36 + samples.length * 2, true);
+        writeString(view, 8, 'WAVE');
+        writeString(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        writeString(view, 36, 'data');
+        view.setUint32(40, samples.length * 2, true);
+        
+        // 音频数据 (float32 -&gt; int16)
+        floatTo16BitPCM(view, 44, samples);
+        
+        return new Blob([buffer], { type: 'audio/wav' });
+    }
+    
+    function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    }
+    
+    function floatTo16BitPCM(output, offset, input) {
+        for (let i = 0; i < input.length; i++, offset += 2) {
+            const s = Math.max(-1, Math.min(1, input[i]));
+            output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        }
+    }
+
+    function stopVoskRecording() {
+        if (isVoskRecording) {
+            isVoskRecording = false;
+            
+            // 更新UI状态
+            const voskBtn = document.getElementById('voskVoiceBtn');
+            if (voskBtn) {
+                voskBtn.classList.remove('recording-active');
+                voskBtn.innerHTML = '🎤';
+                voskBtn.title = '点击开始语音转文字';
+            }
+            
+            // 停止 MediaRecorder
+            if (voskMediaRecorder && voskMediaRecorder.state !== 'inactive') {
+                voskMediaRecorder.stop();
+            }
+            
+            // 关闭 AudioContext 和释放资源
+            if (voskMediaStreamSource) {
+                voskMediaStreamSource.disconnect();
+                voskMediaStreamSource = null;
+            }
+            if (voskAudioContext) {
+                voskAudioContext.close();
+                voskAudioContext = null;
+            }
+            
+            setChatInputHint('', '');
+            
+            console.log('[Vosk] 停止录音，准备发送识别');
+            
+            // 发送到后端识别
+            sendToVoskRecognition();
+        }
+    }
+
+    async function sendToVoskRecognition() {
+        const chatInput = document.getElementById('chatInput');
+        const chatInputHint = document.getElementById('chatInputHint');
+        
+        if (!voskRecordedBuffers || voskRecordedBuffers.length === 0) {
+            console.warn('[Vosk] 没有音频数据');
+            return;
+        }
+        
+        try {
+            setChatInputHint('🔄 正在识别语音...', 'processing');
+            
+            // 转换为 WAV 格式
+            const audioBlob = float32ToWav(voskRecordedBuffers, 16000);
+            
+            // 创建 FormData
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'voice.wav');
+            
+            console.log('[Vosk] 发送 WAV 文件，大小：', audioBlob.size, '字节');
+            
+            // 发送到 Java 后端服务进行识别
+            const response = await fetch('/api/voice/recognize', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP er# 1. 首先查看所有表名
+sqlite3 /opt/jubensha/example_db.sqlite ".tables"
+
+# 2. 查看 user 表的所有用户
+sqlite3 /opt/jubensha/example_db.sqlite "SELECT id, username, email FROM user;"
+
+# 3. 专门查看 admin 用户的详细信息
+sqlite3 /opt/jubensha/example_db.sqlite ".headers on"
+sqlite3 /opt/jubensha/example_db.sqlite ".mode column"
+sqlite3 /opt/jubensha/example_db.sqlite "SELECT * FROM user WHERE username='admin';"# 1. 首先查看所有表名
+sqlite3 /opt/jubensha/example_db.sqlite ".tables"
+
+# 2. 查看 user 表的所有用户
+sqlite3 /opt/jubensha/example_db.sqlite "SELECT id, username, email FROM user;"
+
+# 3. 专门查看 admin 用户的详细信息
+sqlite3 /opt/jubensha/example_db.sqlite ".headers on"
+sqlite3 /opt/jubensha/example_db.sqlite ".mode column"
+sqlite3 /opt/jubensha/example_db.sqlite "SELECT * FROM user WHERE username='admin';"# 找到进程 ID (PID)
+ps aux | grep java
+
+# 停止应用(使用您看到的 PID,例如 212516)
+kill -9 212516# 第1步: 停止 Java 应用
+kill -9 212516
+
+# 等待2秒
+sleep 2
+
+# 第2步: 更新密码(注意:数据库文件名是 example_db.sqlite,字段名是 user_id)
+sqlite3 /opt/jubensha/example_db.sqlite "UPDATE sys_user SET password = '\$2a\$10\$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy' WHERE username = 'admin';"
+
+# 第3步: 验证更新
+sqlite3 /opt/jubensha/example_db.sqlite "SELECT user_id, username, password FROM sys_user WHERE username = 'admin';"
+
+# 第4步: 重启应用
+cd /opt/jubensha
+nohup java -Xmx512m -Xms256m -jar jubensha-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
+
+# 第5步: 查看启动状态
+sleep 3
+ps aux | grep java | grep jubensharor! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success && result.data && result.data.text) {
+                // 将识别结果填充到输入框
+                const recognizedText = result.data.text || '';
+                // ✅ 彻底清理所有空格
+                const cleanedText = recognizedText.replace(/\s+/g, '').trim();
+                chatInput.value = cleanedText;
+                chatInput.focus();
+                
+                if (cleanedText) {
+                    setChatInputHint('✅ 识别成功！您可以编辑后发送', 'success');
+                    console.log('[Vosk] 识别结果:', cleanedText);
+                } else {
+                    setChatInputHint('⚠️ 未能识别到语音内容，请重试', 'warn');
+                    console.warn('[Vosk] 识别结果为空');
+                }
+                
+                // 3秒后清除提示
+                setTimeout(() => {
+                    setChatInputHint('', '');
+                }, 3000);
+            } else {
+                // ✅ 区分真正的错误和成功但无内容的情况
+                const errorMsg = result.msg && result.msg !== '操作成功' ? result.msg : '未能识别到语音内容';
+                throw new Error(errorMsg);
+            }
+            
+        } catch (error) {
+            console.error('[Vosk] 识别失败:', error);
+            setChatInputHint('❌ 识别失败: ' + error.message, 'error');
+            
+            // 5秒后清除错误提示
+            setTimeout(() => {
+                setChatInputHint('', '');
+            }, 5000);
+        }
+    }    
+    // 在页面加载完成后初始化录音按钮
+    window.addEventListener('load', () => {
+        // 延迟初始化，确保 DOM 已完全加载
+        setTimeout(initVoiceButtons, 500);
+        
+        // ✅ 添加 Enter 键发送消息功能
+        const chatInput = document.getElementById('chatInput');
+        if (chatInput) {
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+    });
+</script>
+</body>
+</html>

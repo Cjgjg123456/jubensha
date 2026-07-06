@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"><title>古建奇案馆 - 创作者空间</title>
+    <style>
+        :root { --primary: #ff6600; --secondary: #00e5ff; --border: rgba(255,255,255,0.1); }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:sans-serif; }
+        body { width:100vw; height:100vh; background:url("images/4.jpg") no-repeat center; background-size:cover; display:flex; padding:20px; color:#fff; overflow:hidden; }
+        .sidebar { width:280px; height:100%; background:linear-gradient(180deg, rgba(15,26,58,0.95), rgba(26,42,90,0.95)); border-radius:20px; padding:40px 20px; backdrop-filter:blur(15px); border:1px solid var(--border); }
+        .main-content { flex:1; height:100%; background:rgba(18, 22, 33, 0.85); backdrop-filter:blur(20px); border-radius:20px; margin-left:20px; padding:40px; overflow-y:auto; border:1px solid var(--border); }
+        .form-section { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:18px; padding:30px; margin-bottom:30px; }
+        .section-title { font-size:20px; color:var(--primary); margin-bottom:25px; border-left:4px solid var(--primary); padding-left:15px; display:flex; justify-content:space-between; align-items:center; }
+        .form-input, .form-select { width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--border); color:#fff; padding:14px; border-radius:10px; outline:none; font-size:15px; }
+        .role-nav { display:flex; gap:12px; margin-bottom:25px; padding:8px; background:rgba(0,0,0,0.2); border-radius:14px; overflow-x:auto; }
+        .nav-item { padding:12px 28px; cursor:pointer; border-radius:10px; border:none; background:transparent; color:#888; font-weight:bold; white-space:nowrap; transition:0.3s; }
+        .nav-item.active { background:var(--primary); color:#fff; }
+        .clue-card { background:rgba(0,0,0,0.2); border-left:4px solid var(--primary); padding:20px; border-radius:15px; margin-bottom:20px; position:relative; transition: 0.3s; }
+        .btn { padding:10px 20px; border-radius:10px; border:none; cursor:pointer; font-weight:bold; }
+        .btn-primary { background:linear-gradient(90deg, #ff6600, #ff3300); color:#fff; width:100%; height:60px; font-size:18px; margin-top:20px; transition: 0.3s;}
+        .btn-primary:hover { box-shadow: 0 0 15px rgba(255,102,0,0.5); }
+        #coverPreview { width:100px; height:135px; border-radius:10px; object-fit:cover; display:none; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: rgba(20, 25, 40, 0.95); width: 600px; border-radius: 15px; padding: 30px; border: 1px solid #00e5ff; display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0,229,255,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px; }
+        .modal-title { font-size: 20px; font-weight: bold; color: #00e5ff; }
+        .close-btn { background: none; border: none; color: #aaa; font-size: 28px; cursor: pointer; transition: 0.3s; line-height: 1; }
+        .close-btn:hover { color: #fff; }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:50px;">
+        <img src="images/icon.png" alt="logo" style="width:38px; height:38px; border-radius:10px; object-fit:cover; box-shadow: 0 0 10px rgba(255,102,0,0.3);">
+        <h2 style="margin:0; font-size:22px; letter-spacing:1px; color:#fff;">古建奇案馆</h2>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:15px;">
+        <button class="nav-item active" style="text-align:left;" onclick="location.href='my-creation.html'">📚 我的创作</button>
+        <button class="nav-item" style="text-align:left;" onclick="location.href='index.html'">🏠 返回首页</button>
+    </div>
+</div>
+<div class="main-content">
+    <div class="form-section">
+        <div class="section-title">1. 剧本全局设定</div>
+        <div style="display:grid; grid-template-columns:120px 1fr; gap:30px;">
+            <div onclick="document.getElementById('coverInput').click()" style="cursor:pointer; text-align:center;">
+                <div style="width:100px; height:135px; background:rgba(0,0,0,0.3); border:2px dashed #444; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                    <span id="uploadHint">📸</span><img id="coverPreview">
+                </div>
+                <input type="file" id="coverInput" hidden accept="image/*" onchange="handleCover(this)">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.5fr 1.5fr 1fr 1fr; gap:15px;">
+                <div style="grid-column: span 2;"><label>剧本名称</label><input id="scriptTitle" class="form-input"></div>
+
+                <div style="grid-column: span 2;"><label>所属系列</label>
+                    <div style="display:flex; gap:10px;">
+                        <select id="scriptSeries" class="form-select" style="flex:1;">
+                            <option value="0">无（独立剧本）</option>
+                        </select>
+                        <button class="btn" style="background:rgba(0,229,255,0.1); color:#00e5ff; border:1px solid rgba(0,229,255,0.3); padding:0 15px; white-space:nowrap;" onclick="openSeriesModal()" title="创建一个全新的解谜系列">+ 新建</button>
+                        <button class="btn" style="background:rgba(255,153,0,0.1); color:#ff9900; border:1px solid rgba(255,153,0,0.3); padding:0 15px; white-space:nowrap;" onclick="editCurrentSeries()" title="编辑当前选定的系列">✎ 编辑</button>
+                    </div>
+                </div>
+
+                <div><label>角色总人数</label><input id="scriptCount" type="number" class="form-input" value="3" onchange="syncRoles()"></div>
+                <div><label>难度</label><select id="scriptDiff" class="form-select"><option>新手</option><option>进阶</option><option>烧脑</option></select></div>
+
+                <div style="grid-column: span 2;"><label>背景音乐 (BGM)</label>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="scriptBgmDisplay" class="form-input" disabled placeholder="未上传音乐" style="flex:1; background:rgba(255,255,255,0.05); color:#aaa;">
+                        <button class="btn" style="background:rgba(255,102,0,0.1); color:#ff6600; border:1px solid rgba(255,102,0,0.3); padding:0 15px; white-space:nowrap;" onclick="document.getElementById('bgmInput').click()" title="上传 MP3/WAV">🎵 上传</button>
+                        <input type="file" id="bgmInput" hidden accept="audio/*" onchange="handleBgmUpload(this)">
+                    </div>
+                </div>
+
+                <div style="grid-column: span 4;"><label>简介</label><textarea id="scriptIntro" class="form-input" style="height:60px;"></textarea></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <div class="section-title">2. 详细制作 <div style="display:flex; gap:10px;"><button class="btn" onclick="addAct()">+ 增幕</button> <button class="btn" style="color:#ff3333" onclick="removeAct()">- 减幕</button></div></div>
+        <div id="roleNav" class="role-nav"></div><div id="roleEditor"></div>
+    </div>
+
+    <div class="form-section">
+        <div class="section-title">3. 结局与复盘设定</div>
+        <div style="margin-bottom: 20px;">
+            <label style="color:#00e5ff; font-weight:bold;">📜 剧本真相复盘 (玩家游戏结束后强制展示)</label>
+            <textarea id="scriptTruth" class="form-input" style="height: 120px; margin-top:10px;" placeholder="请在这里写下整个故事的来龙去脉、凶手的作案手法等详细复盘内容..."></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; margin-top:30px;">
+            <label style="color:#ff6600; font-weight:bold;">🎭 结局分支配置 (根据玩家最终指控触发)</label>
+            <button class="btn" onclick="addEnding()" style="background:rgba(255,102,0,0.2); color:#ff6600;">+ 添加结局分支</button>
+        </div>
+        <div id="endingContainer"></div>
+    </div>
+
+    <div class="form-section">
+        <div class="section-title" style="color: #00e5ff; border-color: #00e5ff;">
+            4. 古建科普配置 (可选)
+            <button class="btn" style="background:rgba(0,229,255,0.1); color:#00e5ff; border:1px solid rgba(0,229,255,0.3);" onclick="addArch()">+ 添加古建卡片</button>
+        </div>
+        <div id="archContainer"></div>
+    </div>
+
+    <button class="btn btn-primary" onclick="submitScript()">🚀 确认并全网发布</button>
+</div>
+
+<div class="modal-overlay" id="seriesModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-title" id="seriesModalTitle">🌍 创建全新 RPG 系列</div>
+            <button class="close-btn" onclick="closeSeriesModal()">×</button>
+        </div>
+        <div style="display:flex; gap:20px; margin-bottom: 20px;">
+            <div onclick="document.getElementById('seriesCoverInput').click()" style="cursor:pointer; text-align:center; flex-shrink:0;">
+                <div style="width:100px; height:135px; background:rgba(0,0,0,0.3); border:2px dashed #00e5ff; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-direction: column; gap:5px; transition:0.3s;" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='#00e5ff'">
+                    <span id="seriesUploadHint" style="color:#00e5ff; font-size:13px;">📸<br>系列海报</span>
+                    <img id="seriesCoverPreview" style="width:100px; height:135px; border-radius:10px; object-fit:cover; display:none;">
+                </div>
+                <input type="file" id="seriesCoverInput" hidden accept="image/*" onchange="handleSeriesCover(this)">
+            </div>
+
+            <div style="flex:1; display:flex; flex-direction:column; gap:15px;">
+                <div>
+                    <input type="text" id="newSeriesName" class="form-input" placeholder="系列名称 (如：山西探秘系列)">
+                </div>
+                <div>
+                    <textarea id="newSeriesDesc" class="form-input" style="height:50px;" placeholder="一句话介绍这个系列的世界观..."></textarea>
+                </div>
+                <div onclick="document.getElementById('seriesBgInput').click()" style="cursor:pointer; text-align:center; height: 60px;">
+                    <div style="width:100%; height:100%; background:rgba(0,0,0,0.3); border:2px dashed #ff9900; border-radius:10px; display:flex; align-items:center; justify-content:center; position: relative; overflow: hidden;">
+                        <span id="seriesBgHint" style="color:#ff9900; font-size:13px; z-index: 2;">🗺️ 点击上传专属大地图背景 (横图最佳)</span>
+                        <img id="seriesBgPreview" style="position: absolute; width:100%; height:100%; object-fit:cover; display:none; opacity: 0.6;">
+                    </div>
+                    <input type="file" id="seriesBgInput" hidden accept="image/*" onchange="handleSeriesBg(this)">
+                </div>
+            </div>
+        </div>
+        <button class="btn-primary" style="width:100%; background:linear-gradient(90deg, #00b4db, #0083b0); margin-top:0;" onclick="submitNewSeries()" id="submitSeriesBtn">确认创建系列</button>
+    </div>
+</div>
+
+<script>
+    let roles = [], acts = ["第一幕", "第二幕"], actsPublicContent = ["", ""], clues = [], currentCoverUrl = "";
+    let currentRoleIdx = -1;
+    let endings = [];
+    let architectures = [];
+    const editId = new URLSearchParams(window.location.search).get('scriptId');
+
+    let currentEditSeriesId = null;
+    let newSeriesCoverUrl = "";
+    let newSeriesBgUrl = "";
+    let currentBgmUrl = "";
+
+    async function loadSeriesList(selectSeriesId = null) {
+        try {
+            const res = await fetch('/api/game/series/list').then(r => r.json());
+            if(res.success) {
+                const select = document.getElementById('scriptSeries');
+                select.innerHTML = '<option value="0">无（独立剧本）</option>';
+
+                res.data.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.seriesId;
+                    opt.innerText = s.seriesName;
+                    select.appendChild(opt);
+                });
+
+                if (selectSeriesId) {
+                    select.value = selectSeriesId;
+                }
+            }
+        } catch (e) { console.error("加载系列失败", e); }
+    }
+
+    async function handleBgmUpload(input) {
+        if(input.files[0]) {
+            const formData = new FormData();
+            formData.append("file", input.files[0]);
+            document.getElementById('scriptBgmDisplay').value = "上传中...";
+            const res = await fetch('/api/game/upload', { method: 'POST', body: formData }).then(r => r.json());
+            if(res.success) {
+                currentBgmUrl = res.data;
+                document.getElementById('scriptBgmDisplay').value = "✅ 音乐已就绪";
+            } else {
+                alert("音频上传失败：" + res.msg);
+                document.getElementById('scriptBgmDisplay').value = "上传失败";
+            }
+        }
+    }
+
+    function openSeriesModal() {
+        currentEditSeriesId = null;
+        document.getElementById('seriesModalTitle').innerText = '🌍 创建全新 RPG 系列';
+        document.getElementById('submitSeriesBtn').innerText = '确认创建系列';
+        document.getElementById('newSeriesName').value = '';
+        document.getElementById('newSeriesDesc').value = '';
+        newSeriesCoverUrl = '';
+        newSeriesBgUrl = '';
+        document.getElementById('seriesCoverPreview').style.display = 'none';
+        document.getElementById('seriesUploadHint').style.display = 'flex';
+        document.getElementById('seriesBgPreview').style.display = 'none';
+        document.getElementById('seriesBgHint').style.display = 'block';
+        document.getElementById('seriesBgHint').innerText = '🗺️ 点击上传专属大地图背景 (横图最佳)';
+        document.getElementById('seriesBgHint').style.color = '#ff9900';
+        document.getElementById('seriesModal').style.display = 'flex';
+    }
+
+    async function editCurrentSeries() {
+        const seriesId = document.getElementById('scriptSeries').value;
+        if (!seriesId || seriesId === "0") { alert("请先在下拉框中选择一个需要编辑的系列！"); return; }
+        try {
+            const res = await fetch(`/api/game/series/detail?seriesId=${seriesId}`).then(r => r.json());
+            if (res.success && res.data) {
+                const s = res.data;
+                currentEditSeriesId = s.seriesId;
+                document.getElementById('seriesModalTitle').innerText = '✏️ 编辑 RPG 系列';
+                document.getElementById('submitSeriesBtn').innerText = '保存修改';
+                document.getElementById('newSeriesName').value = s.seriesName || '';
+                document.getElementById('newSeriesDesc').value = s.seriesDesc || '';
+
+                newSeriesCoverUrl = s.coverUrl || '';
+                if (newSeriesCoverUrl) {
+                    document.getElementById('seriesCoverPreview').src = newSeriesCoverUrl;
+                    document.getElementById('seriesCoverPreview').style.display = 'block';
+                    document.getElementById('seriesUploadHint').style.display = 'none';
+                } else {
+                    document.getElementById('seriesCoverPreview').style.display = 'none';
+                    document.getElementById('seriesUploadHint').style.display = 'flex';
+                }
+
+                newSeriesBgUrl = s.backgroundUrl || '';
+                if (newSeriesBgUrl) {
+                    document.getElementById('seriesBgPreview').src = newSeriesBgUrl;
+                    document.getElementById('seriesBgPreview').style.display = 'block';
+                    document.getElementById('seriesBgHint').style.color = '#fff';
+                    document.getElementById('seriesBgHint').innerText = '🗺️ 背景已上传 (点击可更换)';
+                } else {
+                    document.getElementById('seriesBgPreview').style.display = 'none';
+                    document.getElementById('seriesBgHint').style.display = 'block';
+                    document.getElementById('seriesBgHint').innerText = '🗺️ 点击上传专属大地图背景 (横图最佳)';
+                    document.getElementById('seriesBgHint').style.color = '#ff9900';
+                }
+                document.getElementById('seriesModal').style.display = 'flex';
+            } else { alert("获取系列详情失败：" + res.msg); }
+        } catch (e) { alert("网络异常，无法获取系列详情"); }
+    }
+
+    function closeSeriesModal() { document.getElementById('seriesModal').style.display = 'none'; }
+
+    async function handleSeriesCover(input) {
+        if(input.files[0]) {
+            const formData = new FormData();
+            formData.append("file", input.files[0]);
+            const res = await fetch('/api/game/upload', { method: 'POST', body: formData }).then(r => r.json());
+            if(res.success) {
+                newSeriesCoverUrl = res.data;
+                const img = document.getElementById('seriesCoverPreview');
+                img.src = newSeriesCoverUrl;
+                img.style.display = 'block';
+                document.getElementById('seriesUploadHint').style.display = 'none';
+            } else alert("上传失败：" + res.msg);
+        }
+    }
+
+    async function handleSeriesBg(input) {
+        if(input.files[0]) {
+            const formData = new FormData();
+            formData.append("file", input.files[0]);
+            const res = await fetch('/api/game/upload', { method: 'POST', body: formData }).then(r => r.json());
+            if(res.success) {
+                newSeriesBgUrl = res.data;
+                const img = document.getElementById('seriesBgPreview');
+                img.src = newSeriesBgUrl;
+                img.style.display = 'block';
+                document.getElementById('seriesBgHint').style.color = '#fff';
+                document.getElementById('seriesBgHint').innerText = '🗺️ 背景上传成功 (点击可更换)';
+            } else alert("上传失败：" + res.msg);
+        }
+    }
+
+    async function submitNewSeries() {
+        const name = document.getElementById('newSeriesName').value.trim();
+        const desc = document.getElementById('newSeriesDesc').value.trim();
+        if(!name) { alert("系列名称不能为空！"); return; }
+        const btn = document.getElementById('submitSeriesBtn');
+        btn.innerText = '保存中...'; btn.disabled = true;
+        const payload = { seriesName: name, seriesDesc: desc, coverUrl: newSeriesCoverUrl, backgroundUrl: newSeriesBgUrl };
+        let url = '/api/game/series/create';
+        if (currentEditSeriesId) { url = '/api/game/series/update'; payload.seriesId = currentEditSeriesId; }
+        try {
+            const res = await fetch(url, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            }).then(r => r.json());
+            if(res.success && res.data) {
+                alert(currentEditSeriesId ? "🎉 系列修改成功！" : "🎉 系列创建成功！");
+                closeSeriesModal();
+                await loadSeriesList(res.data.seriesId || currentEditSeriesId);
+            } else { alert((currentEditSeriesId ? "修改" : "创建") + "失败：" + res.msg); }
+        } catch(e) { alert("网络异常"); } finally {
+            btn.innerText = currentEditSeriesId ? '保存修改' : '确认创建系列';
+            btn.disabled = false;
+        }
+    }
+
+    // ================== 古建图鉴配置逻辑 ==================
+    function addArch() {
+        architectures.push({ archName: "", imageUrl: "", archDesc: "" });
+        renderArch();
+    }
+
+    async function uploadArchImg(input, index) {
+        if(input.files[0]) {
+            const formData = new FormData();
+            formData.append("file", input.files[0]);
+            const res = await fetch('/api/game/upload', { method: 'POST', body: formData }).then(r => r.json());
+            if(res.success) {
+                architectures[index].imageUrl = res.data;
+                renderArch();
+            } else alert("上传失败：" + res.msg);
+        }
+    }
+
+    function renderArch() {
+        const container = document.getElementById('archContainer');
+        container.innerHTML = '';
+        if (architectures.length === 0) {
+            container.innerHTML = '<div style="color:#666; font-size:14px; text-align:center;">暂无古建图鉴，点击上方按钮添加。</div>';
+            return;
+        }
+        architectures.forEach((a, i) => {
+            const div = document.createElement('div');
+            div.className = 'clue-card';
+            div.style.borderLeftColor = '#00e5ff';
+            div.innerHTML = `
+                <div style="display:flex; gap:15px;">
+                    <div style="width:120px; text-align:center; flex-shrink:0;">
+                        <img src="${a.imageUrl || 'https://placehold.co/120/222/00e5ff?text=上传古建图'}" style="width:100%; height:120px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #00e5ff;" onclick="document.getElementById('archImg_${i}').click()" title="点击上传实景图/结构图">
+                        <input type="file" id="archImg_${i}" hidden accept="image/*" onchange="uploadArchImg(this, ${i})">
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input class="form-input" style="flex:1; border-color:rgba(0,229,255,0.3);" value="${a.archName}" oninput="architectures[${i}].archName=this.value;" placeholder="建筑名称 (如：应县木塔、榫卯结构)">
+                            <button class="btn" style="color:red;" onclick="architectures.splice(${i},1); renderArch();">删除</button>
+                        </div>
+                        <textarea class="form-input" style="flex:1; border-color:rgba(0,229,255,0.3); resize:none;" oninput="architectures[${i}].archDesc=this.value;" placeholder="填写该古建的详细科普介绍...">${a.archDesc}</textarea>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // ================== 🟢 补全：之前丢失的线索卡配置逻辑 ==================
+    function renderClue(c, i) {
+        const div = document.createElement('div'); div.className = 'clue-card';
+        if (c.isHidden == 1) {
+            div.style.borderLeftColor = '#ff9900';
+            div.style.background = 'rgba(255,153,0,0.05)';
+        }
+
+        div.innerHTML = `
+            <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                <input class="form-input" style="flex:1" value="${c.name}" oninput="clues[${i}].name=this.value;" placeholder="线索名称(如: 带血的匕首)">
+                <select class="form-select" style="width:110px;" onchange="clues[${i}].actIndex=parseInt(this.value);">${acts.map((a,idx)=>`<option value="${idx}" ${c.actIndex==idx?'selected':''}>${a}</option>`).join('')}</select>
+                <select class="form-select" style="width:90px;" onchange="clues[${i}].isPublic=parseInt(this.value); render();"><option value="1" ${c.isPublic==1?'selected':''}>公共</option><option value="0" ${c.isPublic==0?'selected':''}>私密</option></select>
+                <select class="form-select" style="width:110px; color:${c.isHidden==1?'#ff9900':'#fff'}; font-weight:bold;" onchange="clues[${i}].isHidden=parseInt(this.value); render();"><option value="0" ${c.isHidden==0?'selected':''}>直接发放</option><option value="1" ${c.isHidden==1?'selected':''}>需搜证</option></select>
+                <button class="btn" style="color:red" onclick="clues.splice(${i},1); render();">删</button>
+            </div>
+            <textarea class="form-input" style="margin-bottom:10px;" oninput="clues[${i}].desc=this.value;" placeholder="线索的具体文字描述内容">${c.desc}</textarea>
+
+            ${c.isHidden == 1 ? `
+            <div style="background:rgba(255,102,0,0.1); border:1px dashed #ff6600; padding:15px; border-radius:8px; display:flex; gap:15px;">
+                <div style="flex:1;">
+                    <label style="color:#ff9900; font-size:12px; font-weight:bold;">🔍 AI 搜证触发条件 (自然语言)</label>
+                    <input class="form-input" style="margin-top:5px; border-color:rgba(255,102,0,0.5);" value="${c.unlockCondition||''}" oninput="clues[${i}].unlockCondition=this.value;" placeholder="例如：玩家检查床底、翻找垃圾桶">
+                </div>
+                <div style="width:100px; text-align:center;">
+                    <label style="color:#ff9900; font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">📸 案发现场图</label>
+                    <img src="${c.sceneImageUrl || 'https://placehold.co/60/222/ff6600?text=传图'}" style="width:60px; height:60px; object-fit:cover; border-radius:5px; cursor:pointer; border:1px solid #ff6600;" onclick="document.getElementById('clueImg_${i}').click()" title="点击上传现场图">
+                    <input type="file" id="clueImg_${i}" hidden accept="image/*" onchange="uploadClueImg(this, ${i})">
+                </div>
+            </div>
+            ` : ''}
+        `;
+        document.getElementById('clueContainer').appendChild(div);
+    }
+
+    function addClue() {
+        clues.push({name: "", desc: "", actIndex: 0, isPublic: 1, roleIndex: currentRoleIdx, isHidden: 0, unlockCondition: "", sceneImageUrl: ""});
+        render();
+    }
+    // ======================================================================
+
+    function syncRoles() {
+        const count = parseInt(document.getElementById('scriptCount').value) || 1;
+        if(roles.length < count) {
+            for(let i = roles.length; i < count; i++) {
+                roles.push({name:`待定角色 ${i+1}`, avatar:"", intro:"", actsContent: acts.map(()=>"")});
+            }
+        } else if(roles.length > count) {
+            roles = roles.slice(0, count);
+            if(currentRoleIdx >= count) currentRoleIdx = -1;
+        }
+        render();
+        renderEndings();
+    }
+
+    async function handleCover(input) {
+        if(input.files[0]) {
+            const formData = new FormData();
+            formData.append("file", input.files[0]);
+            const res = await fetch('/api/game/upload', { method: 'POST', body: formData }).then(r => r.json());
+            if(res.success) {
+                currentCoverUrl = res.data;
+                const img = document.getElementById('coverPreview');
+                img.src = currentCoverUrl; img.style.display='block';
+                document.getElementById('uploadHint').style.display='none';
+            } else alert("上传失败：" + res.msg);
+        }
+    }
+
+    async function handleRoleAvatar(input) {
+        if(input.files[0]) {
+            const formData = new FormData();
+            formData.append("file", input.files[0]);
+            const res = await fetch('/api/game/upload', { method: 'POST', body: formData }).then(r => r.json());
+            if(res.success) {
+                roles[currentRoleIdx].avatar = res.data;
+                document.getElementById('roleAvatarPreview').src = res.data;
+            } else { alert("头像上传失败：" + res.msg); }
+        }
+    }
+
+    async function uploadClueImg(input, index) {
+        if(input.files[0]) {
+            const formData = new FormData();
+            formData.append("file", input.files[0]);
+            const res = await fetch('/api/game/upload', { method: 'POST', body: formData }).then(r => r.json());
+            if(res.success) {
+                clues[index].sceneImageUrl = res.data;
+                render();
+            } else { alert("场景图上传失败：" + res.msg); }
+        }
+    }
+
+    function addAct() { acts.push(`第${acts.length+1}幕`); actsPublicContent.push(""); roles.forEach(r => r.actsContent.push("")); render(); }
+    function removeAct() { if(acts.length>1) { acts.pop(); actsPublicContent.pop(); roles.forEach(r => r.actsContent.pop()); render(); } }
+
+    function render() {
+        const nav = document.getElementById('roleNav'), editor = document.getElementById('roleEditor');
+        nav.innerHTML = ''; editor.innerHTML = '';
+
+        const pubBtn = document.createElement('button');
+        pubBtn.className = `nav-item ${currentRoleIdx === -1 ? 'active' : ''}`;
+        pubBtn.innerText = '📢 幕次公共剧情';
+        if (currentRoleIdx !== -1) {
+            pubBtn.style.color = '#ff9900';
+            pubBtn.style.border = '1px solid rgba(255,153,0,0.3)';
+            pubBtn.style.background = 'rgba(255,153,0,0.1)';
+        } else {
+            pubBtn.style.background = 'linear-gradient(90deg, #ff6600, #ff3300)';
+            pubBtn.style.color = '#fff';
+            pubBtn.style.border = 'none';
+        }
+        pubBtn.onclick = () => { currentRoleIdx = -1; render(); };
+        nav.appendChild(pubBtn);
+
+        roles.forEach((r, i) => {
+            const btn = document.createElement('button'); btn.className = `nav-item ${i==currentRoleIdx?'active':''}`;
+            btn.innerText = r.name; btn.onclick = () => { currentRoleIdx = i; render(); };
+            nav.appendChild(btn);
+        });
+
+        if (currentRoleIdx === -1) {
+            let pubHtml = `
+                <div style="margin-bottom:20px; padding:15px; background:rgba(255,153,0,0.1); border-radius:10px; border:1px solid rgba(255,153,0,0.2);">
+                    <h4 style="color:#ff9900; margin-bottom:5px;">📢 公共故事背景配置</h4>
+                    <p style="font-size:13px; color:#aaa;">在这里填写每一幕的公共剧情。当玩家阅读此幕时，这段内容将向全车玩家公开展示（可用于案发情况通报）。</p>
+                </div>
+            `;
+            acts.forEach((a, i) => {
+                pubHtml += `
+                    <div style="margin-bottom:15px;">
+                        <label style="color:#ff9900; font-weight:bold;">${a}</label>
+                        <textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="例如：1991年，一场大火烧毁了疗养院..." oninput="actsPublicContent[${i}]=this.value;">${actsPublicContent[i]||''}</textarea>
+                    </div>
+                `;
+            });
+            editor.innerHTML = pubHtml;
+        } else {
+            const cur = roles[currentRoleIdx];
+            const avatarDisplay = cur.avatar ? cur.avatar : 'https://placehold.co/60/1a2a5a/ff6600?text=上传';
+
+            editor.innerHTML = `
+                <div style="display:flex; gap:15px; margin-bottom:20px; align-items: center;">
+                    <div onclick="document.getElementById('roleAvatarInput').click()" style="cursor:pointer; text-align:center; flex-shrink: 0;" title="点击上传角色专属头像">
+                        <img id="roleAvatarPreview" src="${avatarDisplay}" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid #ff6600; box-shadow: 0 0 10px rgba(255,102,0,0.2);">
+                        <input type="file" id="roleAvatarInput" hidden accept="image/*" onchange="handleRoleAvatar(this)">
+                    </div>
+                    <input class="form-input" style="flex:1" value="${cur.name}" oninput="roles[${currentRoleIdx}].name=this.value; updateNavName();" placeholder="角色名称">
+                    <input class="form-input" style="flex:2" value="${cur.intro}" oninput="roles[${currentRoleIdx}].intro=this.value;" placeholder="公开人设 (例如: 男 35岁 | 现私家侦探)">
+                </div>
+                <div style="margin-bottom:15px; padding:15px; background:rgba(0,229,255,0.1); border-radius:10px; border:1px solid rgba(0,229,255,0.2);">
+                    <h4 style="color:#00e5ff; margin-bottom:5px;">🤫 角色专属机密剧情</h4>
+                    <p style="font-size:13px; color:#aaa;">在此填写该角色在每一幕中的独立视角、记忆或隐藏线索。只有选择该角色的玩家可见。</p>
+                </div>
+                ${acts.map((a, i) => `<div style="margin-bottom:15px;"><label style="color:#00e5ff; font-weight:bold;">${a}</label><textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="填写该角色的专属机密剧情..." oninput="roles[${currentRoleIdx}].actsContent[${i}]=this.value;">${cur.actsContent[i]||''}</textarea></div>`).join('')}
+                <div id="clueContainer"></div><button class="btn" style="width:100%; background:transparent; border:1px dashed #666; color:#aaa" onclick="addClue()">+ 添加线索卡</button>
+            `;
+            clues.forEach((c, i) => { if(c.isPublic == 1 || c.roleIndex == currentRoleIdx) renderClue(c, i); });
+        }
+    }
+
+    function updateNavName() {
+        document.querySelectorAll('.nav-item')[currentRoleIdx + 1].innerText = roles[currentRoleIdx].name;
+        renderEndings();
+    }
+
+    function renderEndings() {
+        const container = document.getElementById('endingContainer');
+        container.innerHTML = '';
+        endings.forEach((e, i) => {
+            const div = document.createElement('div');
+            div.className = 'clue-card';
+            div.style.borderLeftColor = '#e53935';
+            div.innerHTML = `
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <input class="form-input" style="flex:2" value="${e.title}" placeholder="结局名称 (如: 尘埃落定)" oninput="endings[${i}].title=this.value;">
+                    <select class="form-select" onchange="endings[${i}].votedRoleIndex=parseInt(this.value);">
+                        <option value="-1" ${e.votedRoleIndex === -1 ? 'selected' : ''}>[默认] 投错真凶时触发</option>
+                        <option value="-2" ${e.votedRoleIndex === -2 ? 'selected' : ''}>[默认] 放弃投票时触发</option>
+                        ${roles.map((r, rIdx) => `<option value="${rIdx}" ${e.votedRoleIndex === rIdx ? 'selected' : ''}>当玩家投给: ${r.name}</option>`).join('')}
+                    </select>
+                    <button class="btn" style="color:red" onclick="endings.splice(${i},1); renderEndings();">删</button>
+                </div>
+                <textarea class="form-input" style="height:80px;" placeholder="玩家触发此结局后看到的剧情描述..." oninput="endings[${i}].content=this.value;">${e.content}</textarea>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function addEnding() {
+        endings.push({ title: "", content: "", votedRoleIndex: -1 });
+        renderEndings();
+    }
+
+    async function submitScript() {
+        const username = localStorage.getItem('loginUsername');
+        if (!username) {
+            alert("登录状态失效，请重新登录后再发布作品！");
+            window.location.href = 'login.html';
+            return;
+        }
+
+        const payload = {
+            username: username,
+            scriptId: editId ? parseInt(editId) : null,
+            title: document.getElementById('scriptTitle').value,
+            intro: document.getElementById('scriptIntro').value,
+            config: document.getElementById('scriptCount').value + "人局",
+            difficulty: document.getElementById('scriptDiff').value,
+            seriesId: document.getElementById('scriptSeries').value,
+            coverUrl: currentCoverUrl,
+            bgmUrl: currentBgmUrl,
+            actNames: acts,
+            actContents: actsPublicContent,
+            characters: roles,
+            clues: clues,
+            truthContent: document.getElementById('scriptTruth').value,
+            endings: endings,
+            architectures: architectures
+        };
+        const url = editId ? '/api/game/updateScript' : '/api/game/createScript';
+        try {
+            const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }).then(r => r.json());
+            if(res.success) { alert("🎉 发布成功！"); location.href='my-creation.html'; }
+            else alert("发布失败：" + res.msg);
+        } catch(e) { alert("网络异常"); }
+    }
+
+    window.onload = async () => {
+        await loadSeriesList();
+        renderArch();
+
+        if(editId) {
+            const res = await fetch(`/api/game/detail?scriptId=${editId}`).then(r => r.json());
+            if(res.success) {
+                const d = res.data;
+                document.getElementById('scriptTitle').value = d.script.title;
+                document.getElementById('scriptCount').value = d.script.playerCount;
+                document.getElementById('scriptDiff').value = d.script.difficulty;
+                document.getElementById('scriptIntro').value = d.script.intro;
+                document.getElementById('scriptTruth').value = d.script.truthContent || "";
+
+                document.getElementById('scriptSeries').value = d.script.seriesId || "0";
+
+                currentCoverUrl = d.script.coverUrl;
+                if(currentCoverUrl) { document.getElementById('coverPreview').src=currentCoverUrl; document.getElementById('coverPreview').style.display='block'; document.getElementById('uploadHint').style.display='none'; }
+
+                currentBgmUrl = d.script.bgmUrl || "";
+                if(currentBgmUrl) {
+                    document.getElementById('scriptBgmDisplay').value = "✅ 音乐已就绪";
+                }
+
+                if (d.architectures && d.architectures.length > 0) {
+                    architectures = d.architectures.map(a => ({
+                        archName: a.archName,
+                        imageUrl: a.imageUrl || "",
+                        archDesc: a.archDesc || ""
+                    }));
+                    renderArch();
+                }
+
+                acts = d.acts.map(a => a.actName);
+                actsPublicContent = d.acts.map(a => a.publicContent || "");
+
+                roles = d.roles.map(r => ({
+                    name: r.name,
+                    avatar: r.avatar || "",
+                    intro: r.background,
+                    actsContent: d.acts.map(a => d.contents.find(c=>c.roleId==r.roleId && c.actId==a.actId)?.content || "")
+                }));
+
+                clues = d.clues.map(c => ({
+                    name: c.clueName,
+                    desc: c.clueDesc,
+                    actIndex: d.acts.findIndex(a=>a.actId==c.unlockChapterId),
+                    isPublic: c.isPublic,
+                    roleIndex: d.roles.findIndex(r=>r.roleId==c.roleId),
+                    isHidden: c.isHidden || 0,
+                    unlockCondition: c.unlockCondition || "",
+                    sceneImageUrl: c.sceneImageUrl || ""
+                }));
+
+                if (d.endings && d.endings.length > 0) {
+                    endings = d.endings.map(e => {
+                        let vIdx = -1;
+                        if (e.votedRoleId === -1) vIdx = -1;
+                        else if (e.votedRoleId === 0) vIdx = -2;
+                        else vIdx = d.roles.findIndex(r => r.roleId === e.votedRoleId);
+                        return { title: e.endingTitle, content: e.endingContent, votedRoleIndex: vIdx };
+                    });
+                }
+                render();
+                renderEndings();
+            }
+        } else {
+            syncRoles();
+            endings = [
+                { title: "真凶逍遥法外", content: "你们找错了方向，真正的凶手正躲在暗处嘲笑你们...", votedRoleIndex: -1 },
+                { title: "迷雾重重", content: "没有人被指控，一切真相永远被掩埋在了时间里...", votedRoleIndex: -2 }
+            ];
+            renderEndings();
+        }
+    };
+</script>
+</body>
+</html>

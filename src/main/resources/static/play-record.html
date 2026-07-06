@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>剧遇 - 我的玩本记录</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft Yahei", sans-serif; }
+    body { width: 100vw; height: 100vh; background: url("images/4.jpg") no-repeat center center; background-size: cover; display: flex; padding: 20px; overflow: hidden; }
+
+    /* 侧边栏 */
+    .sidebar { width: 280px; height: 100%; background: linear-gradient(180deg, rgba(15,26,58,0.9), rgba(26,42,90,0.9)); border-radius: 20px; padding: 40px 20px; display: flex; flex-direction: column; backdrop-filter: blur(10px); }
+    .sidebar-logo { text-align: center; margin-bottom: 50px; }
+    .sidebar-logo h2 { color: #fff; font-size: 42px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .sidebar-logo .star { width: 25px; height: 35px; background: #ff6600; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+    .menu-list { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+    .menu-item { width: 100%; height: 60px; background: transparent; border: none; border-radius: 12px; color: #fff; font-size: 18px; display: flex; align-items: center; padding: 0 20px; gap: 15px; cursor: pointer; transition: 0.3s; opacity: 0.7; }
+    .menu-item.active { background: linear-gradient(90deg, #ff6600, #ff3300); opacity: 1; box-shadow: 0 5px 15px rgba(255, 102, 0, 0.3); }
+
+    /* 主内容区 */
+    .main-content { flex: 1; height: 100%; background: rgba(18, 22, 33, 0.85); backdrop-filter: blur(15px); border-radius: 20px; margin-left: 20px; padding: 40px; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.1); }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; }
+    .page-title { font-size: 28px; color: #fff; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+    .back-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 8px; cursor: pointer; color: #fff; transition: 0.3s; font-size: 14px; }
+    .back-btn:hover { background: #ff6600; border-color: #ff6600; }
+
+    /* 记录列表 */
+    .record-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding-right: 10px; }
+    .record-list::-webkit-scrollbar { width: 6px; }
+    .record-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+    .record-card { display: flex; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 15px; padding: 20px; transition: 0.3s; align-items: center; gap: 25px; }
+    .record-card:hover { transform: translateX(5px); background: rgba(255,255,255,0.08); border-color: rgba(255,102,0,0.3); }
+    .r-cover { width: 80px; height: 110px; border-radius: 8px; object-fit: cover; background: #333; }
+    .r-info { flex: 1; }
+    .r-title { font-size: 20px; color: #fff; font-weight: bold; margin-bottom: 8px; }
+    .r-meta { color: #aaa; font-size: 14px; margin-bottom: 5px; }
+    .r-role { display: inline-block; background: rgba(255,102,0,0.15); color: #ff9900; padding: 5px 12px; border-radius: 6px; font-size: 13px; border: 1px solid rgba(255,102,0,0.3); margin-top: 5px; }
+    .r-status { font-size: 16px; font-weight: bold; color: #28a745; }
+  </style>
+</head>
+<body>
+<div class="sidebar">
+  <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:50px;">
+    <img src="images/icon.png" alt="logo" style="width:38px; height:38px; border-radius:10px; object-fit:cover; box-shadow: 0 0 10px rgba(255,102,0,0.3);">
+    <h2 style="margin:0; font-size:22px; letter-spacing:1px; color:#fff;">古建奇案馆</h2>
+  </div>
+  <div class="menu-list">
+    <button class="menu-item" onclick="goToProfile()"><span>👤</span><span>个人信息</span></button>
+  </div>
+</div>
+
+<div class="main-content">
+  <div class="header-top">
+    <h1 class="page-title">📦 我的玩本记录</h1>
+    <button class="back-btn" onclick="goToProfile()">← 返回个人中心</button>
+  </div>
+
+  <div class="record-list" id="dataList">
+    <div style="color:#888; text-align:center; padding-top:50px;">加载中...</div>
+  </div>
+</div>
+
+<script>
+  function goToProfile() {
+    const username = localStorage.getItem('loginUsername') || '';
+    window.location.href = `profile.html?username=${encodeURIComponent(username)}`;
+  }
+
+  function formatDate(dateArr) {
+    if (!dateArr) return '未知时间';
+    if (Array.isArray(dateArr)) return `${dateArr[0]}-${String(dateArr[1]).padStart(2,'0')}-${String(dateArr[2]).padStart(2,'0')} ${String(dateArr[3]||0).padStart(2,'0')}:${String(dateArr[4]||0).padStart(2,'0')}`;
+    return new Date(dateArr).toLocaleString('zh-CN').substring(0, 16);
+  }
+
+  window.onload = async function() {
+    const username = localStorage.getItem('loginUsername');
+    const list = document.getElementById('dataList');
+    try {
+      const res = await fetch(`/api/user/records/play?username=${encodeURIComponent(username)}`).then(r => r.json());
+      if (res.success && res.data.length > 0) {
+        list.innerHTML = res.data.map(item => `
+                <div class="record-card">
+                  <div class="r-cover" style="background: url('${item.cover_url || 'https://placehold.co/80x110/335/00aaff?text=Cover'}') center/cover;"></div>
+                  <div class="r-info">
+                    <div class="r-title">《${item.script_name || '未知剧本'}》</div>
+                    <div class="r-meta">游玩时间：${formatDate(item.play_time)} | 体验时长：${item.play_duration || 0} 分钟</div>
+                    <div class="r-role">${item.remark || '无'}</div>
+                  </div>
+                  <div class="r-status">已完本</div>
+                </div>
+              `).join('');
+      } else {
+        list.innerHTML = '<div style="color:#888; text-align:center; padding-top:50px;">暂无玩本记录，快去大厅上车吧！</div>';
+      }
+    } catch (e) {
+      list.innerHTML = '<div style="color:red; text-align:center; padding-top:50px;">数据加载失败</div>';
+    }
+  }
+</script>
+</body>
+</html>
