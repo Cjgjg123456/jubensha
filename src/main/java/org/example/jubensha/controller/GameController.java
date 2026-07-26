@@ -9,9 +9,14 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -53,14 +58,41 @@ public class GameController {
     @PostMapping("/upload/voice")
     public Result<String> uploadVoice(@RequestParam("file") MultipartFile file) {
         try {
+            if (file == null || file.isEmpty()) {
+                return Result.fail("语音文件为空");
+            }
+            if (file.getSize() > 10 * 1024 * 1024) {
+                return Result.fail("语音文件超过10MB限制");
+            }
+
             String originalFilename = file.getOriginalFilename();
-            String ext = originalFilename != null && originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".webm";
+            String ext = originalFilename != null && originalFilename.contains(".")
+                    ? originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase(Locale.ROOT)
+                    : ".webm";
+            Set<String> allowedExts = Set.of(".webm", ".wav", ".mp3", ".m4a", ".ogg", ".mp4", ".flac");
+            if (!allowedExts.contains(ext)) {
+                return Result.fail("不支持的语音格式");
+            }
+
+            String contentType = file.getContentType();
+            if (contentType != null
+                    && !contentType.toLowerCase(Locale.ROOT).startsWith("audio/")
+                    && !"application/octet-stream".equalsIgnoreCase(contentType)) {
+                return Result.fail("上传文件不是音频类型");
+            }
+
+            Path baseDir = Paths.get(uploadPath).toAbsolutePath().normalize();
+            Path voiceDir = baseDir.resolve("voices").normalize();
+            Files.createDirectories(voiceDir);
+
             String fileName = "voice_" + UUID.randomUUID().toString().replace("-", "") + ext;
-            File dir = new File(uploadPath);
-            if (!dir.exists()) dir.mkdirs();
-            File dest = new File(uploadPath + fileName);
-            file.transferTo(dest);
-            return Result.success("/uploads/" + fileName);
+            Path dest = voiceDir.resolve(fileName).normalize();
+            if (!dest.startsWith(baseDir)) {
+                return Result.fail("语音上传路径非法");
+            }
+
+            file.transferTo(dest.toFile());
+            return Result.success("/uploads/voices/" + fileName);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.fail("语音上传失败");

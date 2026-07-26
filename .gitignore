@@ -34,11 +34,21 @@ logs/
 # Vosk runtime libraries (auto-extracted)
 jubensha_libs/
 
+# Vosk model and SDK duplicates (copies exist in src/main/resources/)
+vosk-model-small-cn-0.22/
+vosk-win64-0.3.45/
+
 # User uploads
+uploads/
 jubensha_uploads/
 
 # Database (keep the example one in jubensha/ dir)
 /example_db.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# SSL certificates
+ssl/
 
 # OS
 .DS_Store

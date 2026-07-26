@@ -160,11 +160,10 @@
             <div class="script-details">
                 <div>
                     <div class="script-title" id="resTitle">《加载中...》</div>
-                    <div class="tags" id="resTags">
-                    </div>
+                    <div class="tags" id="resTags"></div>
                 </div>
                 <div>
-                    <div class="info-row">👥 房间人数：<strong style="color:#fff;" id="resWait">5/6 (缺1人)</strong></div>
+                    <div class="info-row">👥 房间人数：<strong style="color:#fff;" id="resWait">加载中</strong></div>
                     <div class="info-row">🚻 角色配置：<span id="resConfig">加载中</span></div>
                     <div class="info-row">🔥 剧本难度：<span class="stars" id="resStars">★★★☆☆</span></div>
                 </div>
@@ -184,22 +183,14 @@
         window.location.href = `${pageUrl}?username=${encodeURIComponent(username)}`;
     }
 
-    // ================= 模拟剧本数据库 =================
-    // 包含不同类型、人数和难度的剧本，用于筛选测试
-    const mockScripts = [
-        { title: "孤岛惊魂", type: "推理", count: "6", diff: "5", config: "3男3女", stars: "★★★★★", desc: "你们在海上遭遇风暴，流落到这座与世隔绝的孤岛。当第一具尸体出现时，大家都明白，凶手就在你们之中...", tags: ["硬核", "密室"], coverBg: "#444" },
-        { title: "青山入云间", type: "情感", count: "6", diff: "3", config: "3男3女", stars: "★★★☆☆", desc: "天禧二十三年，大楚皇城内风云暗涌。一首绝命诗，牵扯出十年前的旧案。谁是执棋者，谁又是局中人？", tags: ["古风", "情感", "演绎"], coverBg: "#335" },
-        { title: "拆迁暴发户", type: "欢乐", count: "7", diff: "1", config: "4男3女", stars: "★★☆☆☆", desc: "老城坊终于要拆迁了！为了争夺巨额拆迁款，老王家这七口人可谓是八仙过海各显神通，爆笑互撕即将开始！", tags: ["欢乐", "机制", "撕逼"], coverBg: "#533" },
-        { title: "山村老尸", type: "恐怖", count: "5", diff: "3", config: "2男3女", stars: "★★★★☆", desc: "偏僻的山村，诡异的童谣。听说后山的破庙里，每到半夜就会传出女人的哭声。你们作为探险主播，决定一探究竟...", tags: ["恐怖", "民俗", "变格"], coverBg: "#111" },
-        { title: "代码杀机", type: "欢乐", count: "5", diff: "3", config: "5男", stars: "★★★★☆", desc: "距离产品上线仅剩几小时，核心服务器惨遭 rm -rf /*！大门反锁，5名互联网打工人互踩。是谁删库跑路？", tags: ["程序员", "职场", "欢乐"], coverBg: "#2a1b4a" },
-        { title: "暗夜钟声", type: "推理", count: "7", diff: "5", config: "4男3女", stars: "★★★★★", desc: "欧洲中世纪古堡，十二点的钟声敲响，伯爵死在了密室中。完美的犯罪手法，这究竟是幽灵作祟还是人为？", tags: ["欧式", "硬核", "还原"], coverBg: "#2d2d2d" }
-    ];
-
     let isMatching = false;
-    let matchTimeout = null;
+    let matchRequestId = 0;
+    let matchAbortController = null;
+    let resultCardHideTimeout = null;
     let timerInterval = null;
     let seconds = 0;
-    let currentMatchedScript = null; // 当前匹配到的剧本
+    let currentMatchedRoom = null;
+    let isJoiningMatchedRoom = false;
 
     const matchBtn = document.getElementById('matchBtn');
     const ripples = document.querySelectorAll('.ripple');
@@ -208,6 +199,9 @@
     const waitingArea = document.getElementById('waitingArea');
     const resultCard = document.getElementById('resultCard');
     const filterArea = document.getElementById('filterArea');
+    const roomSearchArea = document.getElementById('roomSearchArea');
+    const roomIdInput = document.getElementById('roomIdInput');
+    const roomList = document.getElementById('roomList');
 
     function formatTime(sec) {
         const m = Math.floor(sec / 60).toString().padStart(2, '0');
@@ -220,128 +214,221 @@
         timerDisplay.innerText = formatTime(seconds);
     }
 
-    // 开始匹配逻辑
-    function startMatching() {
-        // 1. 获取筛选条件
-        const selectedType = document.getElementById('scriptType').value;
-        const selectedCount = document.getElementById('playerCount').value;
-        const selectedDiff = document.getElementById('scriptDiff').value;
-
-        // 2. 根据条件过滤剧本库
-        let filteredScripts = mockScripts.filter(s => {
-            let matchType = (selectedType === 'all' || s.type === selectedType);
-            let matchCount = (selectedCount === 'all' || s.count === selectedCount);
-            // 难度筛选逻辑：1=新手(1-2星), 3=进阶(3-4星), 5=烧脑(5星)
-            let matchDiff = true;
-            if (selectedDiff === '1') matchDiff = (s.diff <= 2);
-            if (selectedDiff === '3') matchDiff = (s.diff == 3 || s.diff == 4);
-            if (selectedDiff === '5') matchDiff = (s.diff == 5);
-            if (selectedDiff === 'all') matchDiff = true;
-
-            return matchType && matchCount && matchDiff;
-        });
-
-        // 3. UI 状态切换
-        isMatching = true;
-        seconds = 0;
-        timerDisplay.innerText = "00:00";
-        matchBtn.innerText = '取消匹配';
-        matchBtn.style.background = 'linear-gradient(135deg, #ff3333, #cc0000)';
-        ripples.forEach(r => r.classList.add('active'));
-        filterArea.style.opacity = '0.5'; // 匹配中不可改条件提示
-        filterArea.style.pointerEvents = 'none';
-
-        if (filteredScripts.length === 0) {
-            statusText.innerHTML = '正在全网搜索合适车队...<br><span style="color:#ff3333; font-size:14px;">(当前条件较苛刻，可能需要较长时间)</span>';
-        } else {
-            statusText.innerHTML = '正在全网搜索合适车队...';
+    function getLoginInfo() {
+        const username = localStorage.getItem('loginUsername') || '';
+        const userId = localStorage.getItem('userId') || '';
+        const avatar = localStorage.getItem('avatarUrl') || '';
+        if (!username || !userId || userId === 'undefined' || userId === 'null') {
+            alert('登录状态已失效，请重新登录！');
+            window.location.href = 'login.html';
+            return null;
         }
-        statusText.style.color = '#ff9900';
-        timerInterval = setInterval(updateTimer, 1000);
-
-        // 4. 模拟匹配等待时间 (3-5秒)
-        const randomWaitTime = Math.floor(Math.random() * 3000) + 2000;
-
-        matchTimeout = setTimeout(() => {
-            if (filteredScripts.length === 0) {
-                // 没有符合条件的本
-                stopMatching();
-                alert("😭 当前筛选条件下未找到正在招募的车队！\n请放宽（题材/人数/难度）条件后重新匹配。");
-            } else {
-                // 随机抽取一个符合条件的本
-                currentMatchedScript = filteredScripts[Math.floor(Math.random() * filteredScripts.length)];
-                showMatchResult(currentMatchedScript);
-            }
-        }, randomWaitTime);
+        return { username, userId, avatar };
     }
 
-    function stopMatching() {
-        isMatching = false;
-        clearInterval(timerInterval);
-        clearTimeout(matchTimeout);
+    function clearResultCardHideTimer() {
+        if (resultCardHideTimeout) {
+            clearTimeout(resultCardHideTimeout);
+            resultCardHideTimeout = null;
+        }
+    }
+
+    async function releaseMatchedRoom() {
+        if (!currentMatchedRoom || isJoiningMatchedRoom) return;
+        const userId = localStorage.getItem('userId') || '';
+        if (!userId || !currentMatchedRoom.roomId) return;
+        try {
+            const params = new URLSearchParams({ roomId: currentMatchedRoom.roomId, userId });
+            await fetch('/api/online/room/leave', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            });
+        } catch (error) {
+            console.warn('释放匹配房间失败:', error);
+        }
+    }
+
+    function resetMatchButton() {
         matchBtn.innerText = '开始匹配';
         matchBtn.style.background = 'linear-gradient(135deg, #ff6600, #ff3300)';
         ripples.forEach(r => r.classList.remove('active'));
-        statusText.innerHTML = '选择上方条件<br>点击按钮即刻寻找默契车队';
-        statusText.style.color = '#aaa';
-
         filterArea.style.opacity = '1';
         filterArea.style.pointerEvents = 'auto';
     }
 
-    // 展示匹配到的剧本详情
-    function showMatchResult(script) {
-        stopMatching();
-
-        // 动态填充卡片数据
-        document.getElementById('resTitle').innerText = `《${script.title}》`;
-        document.getElementById('resConfig').innerText = script.config;
-        document.getElementById('resStars').innerText = script.stars;
-        document.getElementById('resDesc').innerText = script.desc;
-        document.getElementById('resCover').style.background = `url('https://placehold.co/140x190/${script.coverBg.replace('#','')}/fff?text=Cover') center/cover, ${script.coverBg}`;
-
-        // 模拟当前房间缺几人 (随机缺1-2人)
-        const missing = Math.floor(Math.random() * 2) + 1;
-        const current = parseInt(script.count) - missing;
-        document.getElementById('resWait').innerText = `${current}/${script.count} (缺${missing}人)`;
-
-        // 动态渲染标签
-        let tagsHtml = '';
-        script.tags.forEach((tag, index) => {
-            // 给第一个标签换个颜色
-            const colorClass = index === 1 ? 'tag blue' : 'tag';
-            tagsHtml += `<span class="${colorClass}">${tag}</span>`;
-        });
-        document.getElementById('resTags').innerHTML = tagsHtml;
-
-        // 切换显示视图
-        waitingArea.style.display = 'none';
-        filterArea.style.display = 'none';
-        resultCard.style.display = 'block';
-    }
-
-    // 重新匹配
-    function rematch() {
+    async function hideMatchResult(options = {}) {
+        const { releaseRoom = true, message = '' } = options;
+        clearResultCardHideTimer();
+        if (releaseRoom) {
+            await releaseMatchedRoom();
+        }
+        currentMatchedRoom = null;
+        isJoiningMatchedRoom = false;
         resultCard.style.display = 'none';
         waitingArea.style.display = 'flex';
         filterArea.style.display = 'flex';
+        roomSearchArea.style.display = 'flex';
+        resetMatchButton();
+        statusText.innerHTML = message || '选择上方条件<br>点击按钮即刻寻找默契车队';
+        statusText.style.color = '#aaa';
+    }
+
+    async function startMatching() {
+        const login = getLoginInfo();
+        if (!login) return;
+
+        clearResultCardHideTimer();
+        currentMatchedRoom = null;
+        isJoiningMatchedRoom = false;
+        resultCard.style.display = 'none';
+        roomSearchArea.style.display = 'none';
+
+        const requestId = ++matchRequestId;
+        if (matchAbortController) {
+            matchAbortController.abort();
+        }
+        matchAbortController = new AbortController();
+
+        const selectedType = document.getElementById('scriptType').value;
+        const selectedCount = document.getElementById('playerCount').value;
+        const selectedDiff = document.getElementById('scriptDiff').value;
+
+        isMatching = true;
+        seconds = 0;
+        timerDisplay.innerText = '00:00';
+        matchBtn.innerText = '取消匹配';
+        matchBtn.style.background = 'linear-gradient(135deg, #ff3333, #cc0000)';
+        ripples.forEach(r => r.classList.add('active'));
+        filterArea.style.opacity = '0.5';
+        filterArea.style.pointerEvents = 'none';
+        statusText.innerHTML = '正在寻找可加入的房间...';
+        statusText.style.color = '#ff9900';
+        timerInterval = setInterval(updateTimer, 1000);
+
+        try {
+            const params = new URLSearchParams({
+                userId: login.userId,
+                username: login.username,
+                avatar: login.avatar,
+                scriptType: selectedType,
+                playerCount: selectedCount,
+                scriptDiff: selectedDiff
+            });
+            const response = await fetch('/api/online/room/match', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params,
+                signal: matchAbortController.signal
+            });
+            const result = await response.json();
+            if (requestId !== matchRequestId || !isMatching) return;
+
+            if (result.success && result.data) {
+                showMatchResult(result.data);
+            } else {
+                stopMatching({ keepMessage: true });
+                statusText.innerHTML = result.msg || '暂无可加入的房间，请先创建房间。';
+                statusText.style.color = '#ff6666';
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+            console.error('匹配失败:', error);
+            if (requestId === matchRequestId) {
+                stopMatching({ keepMessage: true });
+                statusText.innerHTML = '网络异常，匹配失败，请稍后重试。';
+                statusText.style.color = '#ff6666';
+            }
+        } finally {
+            if (requestId === matchRequestId) {
+                matchAbortController = null;
+            }
+        }
+    }
+
+    function stopMatching(options = {}) {
+        isMatching = false;
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        if (matchAbortController) {
+            matchAbortController.abort();
+            matchAbortController = null;
+        }
+        resetMatchButton();
+        if (!options.keepMessage) {
+            statusText.innerHTML = '选择上方条件<br>点击按钮即刻寻找默契车队';
+            statusText.style.color = '#aaa';
+        }
+        roomSearchArea.style.display = 'flex';
+    }
+
+    function splitTags(tags) {
+        if (!tags) return [];
+        return String(tags).split(/[，,、\s]+/).map(t => t.trim()).filter(Boolean).slice(0, 5);
+    }
+
+    function starsFromDifficulty(value) {
+        const parsed = parseInt(String(value || '').replace(/[^0-9]/g, ''), 10);
+        const count = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 5) : 3;
+        return '★★★★★'.slice(0, count) + '☆☆☆☆☆'.slice(0, 5 - count);
+    }
+
+    function showMatchResult(room) {
+        stopMatching({ keepMessage: true });
+        currentMatchedRoom = room;
+
+        const title = room.scriptTitle || room.roomName || '匹配房间';
+        document.getElementById('resTitle').innerText = `《${title}》`;
+        document.getElementById('resConfig').innerText = room.scriptPlayerCount ? `${room.scriptPlayerCount}人本` : `${room.maxPlayers || '?'}人房间`;
+        document.getElementById('resStars').innerText = starsFromDifficulty(room.scriptDifficulty);
+        document.getElementById('resDesc').innerText = room.scriptIntro || `房间：${room.roomName || room.roomId}`;
+        document.getElementById('resWait').innerText = `${room.playerCount || 0}/${room.maxPlayers || '?'} (${room.roomName || room.roomId})`;
+
+        const cover = document.getElementById('resCover');
+        cover.style.background = room.scriptCoverUrl
+            ? `url('${String(room.scriptCoverUrl).replace(/'/g, '')}') center/cover, #444`
+            : '#444';
+
+        const tagsBox = document.getElementById('resTags');
+        tagsBox.innerHTML = '';
+        const tags = splitTags(room.scriptTags);
+        if (tags.length === 0) tags.push('等待中');
+        tags.forEach(tag => {
+            const span = document.createElement('span');
+            span.className = 'tag';
+            span.textContent = tag;
+            tagsBox.appendChild(span);
+        });
+
+        waitingArea.style.display = 'none';
+        filterArea.style.display = 'none';
+        roomSearchArea.style.display = 'none';
+        resultCard.style.display = 'block';
+
+        // 匹配成功后一直显示，直到用户点击加入或重试
+    }
+
+    async function rematch() {
+        await hideMatchResult({ releaseRoom: true });
         startMatching();
     }
 
-    // 确认加入房间
     function joinRoom() {
-        if(!currentMatchedScript) return;
+        if (!currentMatchedRoom) {
+            alert('匹配结果已过期，请重新匹配');
+            return;
+        }
+        const login = getLoginInfo();
+        if (!login) return;
 
-        const username = localStorage.getItem('loginUsername') || '';
-        // 带着剧本名和随机生成的房间名跳转到游戏大厅
-        const randomRoomName = `${currentMatchedScript.title} ${Math.floor(Math.random()*100)}号专车`;
-        const targetUrl = `game-room.html?username=${encodeURIComponent(username)}&script=${encodeURIComponent(currentMatchedScript.title)}&roomName=${encodeURIComponent(randomRoomName)}`;
-
-        alert("✨ 匹配成功！即将带您进入游戏房间...");
+        isJoiningMatchedRoom = true;
+        clearResultCardHideTimer();
+        const targetUrl = `game-room.html?username=${encodeURIComponent(login.username)}&roomId=${encodeURIComponent(currentMatchedRoom.roomId)}&roomName=${encodeURIComponent(currentMatchedRoom.roomName || '')}&scriptId=${encodeURIComponent(currentMatchedRoom.scriptId)}&mode=online`;
         window.location.href = targetUrl;
     }
 
-    // 按钮事件绑定
     matchBtn.addEventListener('click', function() {
         if (!isMatching) { startMatching(); }
         else { stopMatching(); }
@@ -351,30 +438,16 @@
         localStorage.clear(); window.location.href = 'login.html';
     });
 
-    // ================= 房间搜索功能 =================
-    const roomSearchArea = document.getElementById('roomSearchArea');
-    const roomIdInput = document.getElementById('roomIdInput');
-    const roomList = document.getElementById('roomList');
-    const noRooms = document.getElementById('noRooms');
-
     async function searchRoom() {
         const roomId = roomIdInput.value.trim();
-        
         if (!roomId) {
             alert('请输入房间号');
             return;
         }
 
         try {
-            const response = await fetch(`/api/online/room/${roomId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
+            const response = await fetch(`/api/online/room/${encodeURIComponent(roomId)}`);
             const result = await response.json();
-            
             if (result.code === 200 && result.data) {
                 showRoomSearchResult([result.data]);
             } else {
@@ -388,15 +461,8 @@
 
     async function loadPublicRooms() {
         try {
-            const response = await fetch('/api/online/rooms', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
+            const response = await fetch('/api/online/rooms');
             const result = await response.json();
-            
             if (result.code === 200 && result.data) {
                 showRoomSearchResult(result.data);
             } else {
@@ -410,49 +476,63 @@
 
     function showRoomSearchResult(rooms) {
         roomList.innerHTML = '';
-        
         if (rooms.length === 0) {
             roomList.style.display = 'none';
             return;
         }
 
         roomList.style.display = 'flex';
-        
         rooms.forEach(room => {
             const roomCard = document.createElement('div');
             roomCard.className = 'room-card';
-            
-            const statusClass = room.status === 'IDLE' ? 'status-idle' : 'status-playing';
-            const statusText = room.status === 'IDLE' ? '等待中' : '游戏中';
-            
-            roomCard.innerHTML = `
-                <div class="room-info">
-                    <div class="room-name">${room.roomName}</div>
-                    <div class="room-detail">房间号: ${room.roomId} | 人数: ${room.playerCount}/${room.maxPlayers}</div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <span class="room-status ${statusClass}">${statusText}</span>
-                    <button class="join-room-btn" onclick="joinRoomById('${room.roomId}', '${room.roomName}', '${room.scriptId}')">加入</button>
-                </div>
-            `;
-            
+
+            const roomInfo = document.createElement('div');
+            roomInfo.className = 'room-info';
+            const roomName = document.createElement('div');
+            roomName.className = 'room-name';
+            roomName.textContent = room.roomName;
+            const roomDetail = document.createElement('div');
+            roomDetail.className = 'room-detail';
+            roomDetail.textContent = `房间号: ${room.roomId} | 人数: ${room.playerCount}/${room.maxPlayers}`;
+            roomInfo.appendChild(roomName);
+            roomInfo.appendChild(roomDetail);
+
+            const actions = document.createElement('div');
+            actions.style.display = 'flex';
+            actions.style.alignItems = 'center';
+            actions.style.gap = '15px';
+            const status = document.createElement('span');
+            status.className = `room-status ${room.status === 'IDLE' ? 'status-idle' : 'status-playing'}`;
+            status.textContent = room.status === 'IDLE' ? '等待中' : '游戏中';
+            const joinBtn = document.createElement('button');
+            joinBtn.className = 'join-room-btn';
+            joinBtn.textContent = '加入';
+            joinBtn.onclick = () => joinRoomById(room.roomId, room.roomName, room.scriptId);
+            actions.appendChild(status);
+            actions.appendChild(joinBtn);
+
+            roomCard.appendChild(roomInfo);
+            roomCard.appendChild(actions);
             roomList.appendChild(roomCard);
         });
     }
 
     function joinRoomById(roomId, roomName, scriptId) {
-        const username = localStorage.getItem('loginUsername') || '';
-        const userId = localStorage.getItem('userId') || '';
-        
-        if (!username || !userId || userId === "undefined" || userId === "null") {
-            alert('登录状态已失效，请重新登录！');
-            window.location.href = 'login.html';
-            return;
-        }
-
-        const targetUrl = `game-room.html?username=${encodeURIComponent(username)}&roomId=${encodeURIComponent(roomId)}&roomName=${encodeURIComponent(roomName)}&scriptId=${encodeURIComponent(scriptId)}`;
+        const login = getLoginInfo();
+        if (!login) return;
+        const targetUrl = `game-room.html?username=${encodeURIComponent(login.username)}&roomId=${encodeURIComponent(roomId)}&roomName=${encodeURIComponent(roomName)}&scriptId=${encodeURIComponent(scriptId)}&mode=online`;
         window.location.href = targetUrl;
     }
+
+    window.addEventListener('beforeunload', () => {
+        if (currentMatchedRoom && !isJoiningMatchedRoom && navigator.sendBeacon) {
+            const params = new URLSearchParams({
+                roomId: currentMatchedRoom.roomId,
+                userId: localStorage.getItem('userId') || ''
+            });
+            navigator.sendBeacon('/api/online/room/leave', params);
+        }
+    });
 
     loadPublicRooms();
 </script>

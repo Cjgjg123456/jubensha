@@ -145,15 +145,26 @@ public class WebSocketHandler extends TextWebSocketHandler {
         if (room != null) {
             Player existingPlayer = room.getPlayer(userId);
             if (existingPlayer == null) {
+                if (!Room.STATUS_IDLE.equals(room.getStatus())) {
+                    log("WARN", "JOIN_ROOM_REJECTED", "房间已开始或已结束，拒绝新玩家加入",
+                        Map.of("userId", userId, "username", username, "roomId", roomId, "status", room.getStatus()));
+                    return;
+                }
+
                 Player roomPlayer = new Player(userId, username, avatar);
                 roomPlayer.setRoomId(roomId);
-                room.addPlayer(roomPlayer);
-                log("INFO", "JOIN_ROOM", "用户加入房间", 
-                    Map.of("userId", userId, "username", username, "roomId", roomId, 
-                           "status", room.getStatus(), "gameId", room.getGameId(), 
+                if (!room.addPlayer(roomPlayer)) {
+                    log("WARN", "JOIN_ROOM_REJECTED", "房间已满或用户重复，加入失败",
+                        Map.of("userId", userId, "username", username, "roomId", roomId,
+                               "playerCount", room.getPlayerCount(), "maxPlayers", room.getMaxPlayers()));
+                    return;
+                }
+                log("INFO", "JOIN_ROOM", "用户加入房间",
+                    Map.of("userId", userId, "username", username, "roomId", roomId,
+                           "status", room.getStatus(), "gameId", room.getGameId(),
                            "playerCount", room.getPlayerCount(), "maxPlayers", room.getMaxPlayers()));
             } else {
-                log("INFO", "JOIN_ROOM", "用户已在房间中", 
+                log("INFO", "JOIN_ROOM", "用户已在房间中",
                     Map.of("userId", userId, "username", username, "roomId", roomId,
                            "status", room.getStatus(), "gameId", room.getGameId()));
             }

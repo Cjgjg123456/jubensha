@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.example.jubensha.common.Result;
 import org.example.jubensha.service.VoiceRecognitionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -34,13 +35,13 @@ public class VoiceRecognitionController {
 
     private final VoiceRecognitionService voiceRecognitionService;
 
+    @Value("${file.upload-path}")
+    private String uploadPath;
+
     @Autowired
     public VoiceRecognitionController(@Lazy VoiceRecognitionService voiceRecognitionService) {
         this.voiceRecognitionService = voiceRecognitionService;
     }
-
-    // 使用绝对路径，确保临时文件保存在项目根目录
-    private static final String UPLOAD_DIR = System.getProperty("user.dir") + File.separator + "jubensha_uploads" + File.separator + "voice_temp" + File.separator;
 
     /**
      * 上传音频文件并转换为文字
@@ -53,7 +54,8 @@ public class VoiceRecognitionController {
             @RequestParam("file") MultipartFile file) {
         
         Map<String, Object> response = new HashMap<>();
-        
+        Path tempFilePath = null;
+
         try {
             // 验证文件
             if (file.isEmpty()) {
@@ -90,15 +92,15 @@ public class VoiceRecognitionController {
                     .body(Result.fail("不支持的音频格式，请使用 WAV/M4A/MP3/FLAC/WebM/MP4/OGG 格式"));
             }
             
-            // 保存临时文件
-            Path uploadPath = Paths.get(UPLOAD_DIR);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-                System.out.println("✅ 创建语音上传目录: " + uploadPath.toAbsolutePath());
+            // 保存临时文件到配置的上传目录，确保腾讯云生产环境路径稳定
+            Path voiceTempPath = Paths.get(this.uploadPath).resolve("voice_temp").toAbsolutePath().normalize();
+            if (!Files.exists(voiceTempPath)) {
+                Files.createDirectories(voiceTempPath);
+                System.out.println("✅ 创建语音上传目录: " + voiceTempPath.toAbsolutePath());
             }
-            
+
             String tempFileName = UUID.randomUUID().toString() + getFileExtension(originalFilename);
-            Path tempFilePath = uploadPath.resolve(tempFileName);
+            tempFilePath = voiceTempPath.resolve(tempFileName);
             file.transferTo(tempFilePath.toFile());
             System.out.println("📁 临时文件已保存: " + tempFilePath);
             
@@ -167,6 +169,14 @@ public class VoiceRecognitionController {
             return ResponseEntity.internalServerError()
                 .headers(headers)
                 .body(Result.fail("服务器内部错误: " + e.getMessage()));
+        } finally {
+            if (tempFilePath != null) {
+                try {
+                    Files.deleteIfExists(tempFilePath);
+                } catch (IOException cleanupError) {
+                    System.err.println("⚠️ 清理语音临时文件失败: " + cleanupError.getMessage());
+                }
+            }
         }
     }
 

@@ -2,6 +2,7 @@ package org.example.jubensha.config;
 
 import jakarta.annotation.PostConstruct;
 import org.example.jubensha.service.VoiceRecognitionService;
+import org.example.jubensha.config.PythonVoiceConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,11 +16,19 @@ public class VoiceRecognitionInitConfig {
     @Autowired
     private VoiceRecognitionService voiceRecognitionService;
 
+    @Autowired
+    private PythonVoiceConfig pythonVoiceConfig;
+
     /**
      * 应用启动时自动初始化 Vosk 模型
      */
     @PostConstruct
     public void initVoiceRecognition() {
+        if (pythonVoiceConfig != null && pythonVoiceConfig.isEnabled()) {
+            System.out.println("=== Python 语音服务已启用，跳过 Java Vosk 启动预加载 ===");
+            return;
+        }
+
         try {
             System.out.println("=== 开始初始化 Vosk 离线语音识别模型 ===");
             voiceRecognitionService.initModel();

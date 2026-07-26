@@ -1,5 +1,6 @@
 package org.example.jubensha.service;
 
+import org.example.jubensha.config.PythonVoiceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -21,21 +22,28 @@ public class PythonVoiceServiceManager {
     
     private static final Logger log = LoggerFactory.getLogger(PythonVoiceServiceManager.class);
     
-    // Python服务配置
-    private static final String PYTHON_SERVICE_URL = "http://localhost:5000/api/health";
     private static final String PYTHON_SCRIPT_PATH = "python_voice_server_enhanced.py";
-    private static final int STARTUP_TIMEOUT = 30000; // 30秒超时
-    
+
+    private final PythonVoiceConfig config;
     private Process pythonProcess = null;
     private boolean serviceStarted = false;
+
+    public PythonVoiceServiceManager(PythonVoiceConfig config) {
+        this.config = config;
+    }
     
     /**
      * Spring应用准备就绪后自动执行
      */
     @EventListener(ApplicationReadyEvent.class)
     public void init() {
+        if (!config.isEnabled()) {
+            log.info("Python语音服务未启用，跳过自动启动");
+            return;
+        }
+
         log.info("🔍 开始检查Python语音服务状态...");
-        
+
         // 检查服务是否已在运行
         if (isServiceRunning()) {
             log.info("✅ Python语音服务已在运行");
@@ -53,7 +61,7 @@ public class PythonVoiceServiceManager {
      */
     private boolean isServiceRunning() {
         try {
-            URL url = new URL(PYTHON_SERVICE_URL);
+            URL url = new URL(config.getServiceUrl() + "/api/health");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(2000);
@@ -121,11 +129,12 @@ public class PythonVoiceServiceManager {
             outputReader.start();
             
             // 等待服务启动
-            log.info("⏳ 等待Python服务启动（最多{}秒）...", STARTUP_TIMEOUT / 1000);
+            int startupTimeout = Math.max(5, config.getTimeout()) * 1000;
+            log.info("⏳ 等待Python服务启动（最多{}秒）...", startupTimeout / 1000);
             long startTime = System.currentTimeMillis();
             boolean started = false;
-            
-            while (System.currentTimeMillis() - startTime < STARTUP_TIMEOUT) {
+
+            while (System.currentTimeMillis() - startTime < startupTimeout) {
                 Thread.sleep(1000);
                 
                 if (isServiceRunning()) {

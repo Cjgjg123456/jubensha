@@ -1088,6 +1088,57 @@ async function updateRoomStatus(totalSeats, username, roomId) {
             .replace(/'/g, '&#39;');
     }
 
+    function isLocalhost() {
+        return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+    }
+
+    function ensureMicrophoneAvailable() {
+        if (!window.isSecureContext && !isLocalhost()) {
+            throw new Error('麦克风功能需要 HTTPS 访问。部署到腾讯云后请使用 HTTPS 域名访问，不能直接用 HTTP 公网 IP。');
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('当前浏览器不支持麦克风录音，请使用新版 Chrome 或 Edge。');
+        }
+        if (!window.MediaRecorder) {
+            throw new Error('当前浏览器不支持 MediaRecorder 录音。');
+        }
+    }
+
+    function getSupportedAudioMimeType() {
+        const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+        return candidates.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || '';
+    }
+
+    async function persistRoomChat(userId, username, avatar, content, msgId) {
+        const params = new URLSearchParams({
+            userId: userId || '0',
+            username: username || '我',
+            avatar: avatar || '',
+            content: content || ''
+        });
+        if (msgId) params.append('msgId', msgId);
+        return fetch(`/api/online/room/${currentRoomId}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params
+        });
+    }
+
+    async function uploadVoiceBlob(audioBlob) {
+        const formData = new FormData();
+        const ext = audioBlob.type.includes('ogg') ? 'ogg' : audioBlob.type.includes('mp4') ? 'mp4' : 'webm';
+        formData.append('file', audioBlob, `voice_${Date.now()}.${ext}`);
+        const response = await fetch('/api/game/upload/voice', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        if (!result.success || !result.data) {
+            throw new Error(result.msg || '语音上传失败');
+        }
+        return result.data;
+    }
+
     // ====== 消息去重机制 ======
     let sentMessageIds = new Set();
     let lastMessageId = '';
@@ -1353,15 +1404,11 @@ async function updateRoomStatus(totalSeats, username, roomId) {
                     msgId: msgId
                 }));
                 
-                // 同时调用 REST API 保存消息到数据库
-                fetch(`/api/online/room/${currentRoomId}/chat?userId=${userId}&username=${encodeURIComponent(username)}&avatar=${encodeURIComponent(avatar)}&content=${encodeURIComponent(text)}`, {
-                    method: 'POST'
-                }).catch(err => console.error('保存消息失败:', err));
+                // 同时调用 REST API 保存消息，刷新/重连后仍可看到
+                persistRoomChat(userId, username, avatar, text, msgId).catch(err => console.error('保存消息失败:', err));
             } else if (currentRoomId) {
                 // ✅ WebSocket 未连接时，使用 REST API（联机模式）
-                const response = await fetch(`/api/online/room/${currentRoomId}/chat?userId=${userId}&username=${encodeURIComponent(username)}&avatar=${encodeURIComponent(avatar)}&content=${encodeURIComponent(text)}`, {
-                    method: 'POST'
-                });
+                const response = await persistRoomChat(userId, username, avatar, text, msgId);
 
                 const result = await response.json();
                 if (result.success) {
@@ -1584,11 +1631,14 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         const recordBtn = document.getElementById('recordVoiceBtn');
         
         try {
+            ensureMicrophoneAvailable();
+
             // 请求麦克风权限
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
+
             // 创建录音器
-            mediaRecorder = new MediaRecorder(stream);
+            const mimeType = getSupportedAudioMimeType();
+            mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
             audioChunks = [];
             
             // 收集音频数据
@@ -1608,7 +1658,8 @@ async function updateRoomStatus(totalSeats, username, roomId) {
                 isStopping = true;
                 
                 try {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioType = mediaRecorder && mediaRecorder.mimeType ? mediaRecorder.mimeType : 'audio/webm';
+                    const audioBlob = new Blob(audioChunks, { type: audioType });
                     await sendVoiceMessage(audioBlob);
                 } catch (error) {
                     console.error('[录音] 发送语音消息失败:', error);
@@ -1688,36 +1739,43 @@ async function updateRoomStatus(totalSeats, username, roomId) {
     async function sendVoiceMessage(audioBlob) {
         const username = localStorage.getItem('loginUsername') || '我';
         const userId = localStorage.getItem('userId') || '0';
+        const avatar = localStorage.getItem('avatarUrl') || '';
         const duration = Math.max(1, Math.round((Date.now() - recordingStartTime) / 1000));
         
         console.log('[语音] 准备发送语音消息，时长:', duration, '秒');
         
-        // ✅ 关键修复：将 Blob 转换为 Base64，确保跨会话可用
-        const base64Audio = await blobToBase64(audioBlob);
-        
-        // 构造语音消息内容（使用 Base64 而非 blob URL）
-        const voiceContent = `[VOICE]${base64Audio}|${duration}`;
-        
-        // 通过 WebSocket 或 REST API 发送
-        if (socket && socket.readyState === WebSocket.OPEN && currentRoomId) {
-            // ✅ 联机模式：通过 WebSocket 发送
-            socket.send(JSON.stringify({
-                type: 'CHAT',
-                roomId: currentRoomId,
-                userId: userId,
-                username: username,
-                content: voiceContent
-            }));
-            
-            // 本地显示（避免等待服务器回传）
-            addChatMessage(username, voiceContent, true);
-            
-        } else if (currentMode === 'ai') {
-            // ✅ AI 模式：本地显示
-            addChatMessage(username, voiceContent, true);
-        } else {
-            // ✅ 本地模式：直接显示语音消息
-            addChatMessage(username, voiceContent, true);
+            try {
+            // ✅ 先上传语音文件到服务器，再用 URL 发送（刷新/重连后仍可播放）
+            const voiceUrl = await uploadVoiceBlob(audioBlob);
+            const msgId = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const voiceContent = `[VOICE]${voiceUrl}|${duration}`;
+
+            if (socket && socket.readyState === WebSocket.OPEN && currentRoomId) {
+                socket.send(JSON.stringify({
+                    type: 'CHAT',
+                    roomId: currentRoomId,
+                    userId: userId,
+                    username: username,
+                    content: voiceContent,
+                    msgId: msgId
+                }));
+                addChatMessage(username, voiceContent, true, msgId);
+                persistRoomChat(userId, username, avatar, voiceContent, msgId).catch(err =>
+                    console.error('保存语音消息失败:', err));
+            } else if (currentRoomId) {
+                const response = await persistRoomChat(userId, username, avatar, voiceContent, msgId);
+                const result = await response.json();
+                if (result.success) {
+                    addChatMessage(username, voiceContent, true, msgId);
+                } else {
+                    console.error('[语音] 保存失败:', result.msg);
+                }
+            } else {
+                addChatMessage(username, voiceContent, true, msgId);
+            }
+        } catch (error) {
+            console.error('[语音] 发送失败:', error);
+            alert('语音消息发送失败: ' + error.message);
         }
     }
     
@@ -1735,7 +1793,10 @@ async function updateRoomStatus(totalSeats, username, roomId) {
     // ✅ Vosk 离线语音转文字功能（通过后端 Python 服务）
     let isVoskRecording = false;
     let voskAudioContext = null;
+    let voskMediaStream = null;
     let voskMediaStreamSource = null;
+    let voskScriptProcessor = null;
+    let voskRecordedBuffers = [];
     let voskMediaRecorder = null;
     let voskRecordedData = [];
     
@@ -1812,15 +1873,18 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         const chatInputHint = document.getElementById('chatInputHint');
         
         try {
+            ensureMicrophoneAvailable();
+
             // 请求麦克风权限
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                    sampleRate: 16000, 
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    sampleRate: 16000,
                     channelCount: 1,
                     echoCancellation: true,
                     noiseSuppression: true
-                } 
+                }
             });
+            voskMediaStream = stream;
             
             // 创建 AudioContext
             voskAudioContext = new (window.AudioContext || window.webkitAudioContext)({
@@ -1844,7 +1908,7 @@ async function updateRoomStatus(totalSeats, username, roomId) {
                 voskRecordedBuffers.push(new Float32Array(inputData));
             };
             
-            console.log('[Vosk] 开始录音 (ScriptProcessor 方式，直接录制 16kHz 单声道');
+            console.log('[Vosk] 开始录音 (ScriptProcessor 方式，直接录制 16kHz 单声道)');
             
             isVoskRecording = true;
             
@@ -1937,8 +2001,12 @@ async function updateRoomStatus(totalSeats, username, roomId) {
             if (voskMediaRecorder && voskMediaRecorder.state !== 'inactive') {
                 voskMediaRecorder.stop();
             }
-            
+
             // 关闭 AudioContext 和释放资源
+            if (voskScriptProcessor) {
+                voskScriptProcessor.disconnect();
+                voskScriptProcessor = null;
+            }
             if (voskMediaStreamSource) {
                 voskMediaStreamSource.disconnect();
                 voskMediaStreamSource = null;
@@ -1947,7 +2015,11 @@ async function updateRoomStatus(totalSeats, username, roomId) {
                 voskAudioContext.close();
                 voskAudioContext = null;
             }
-            
+            if (voskMediaStream) {
+                voskMediaStream.getTracks().forEach(track => track.stop());
+                voskMediaStream = null;
+            }
+
             setChatInputHint('', '');
             
             console.log('[Vosk] 停止录音，准备发送识别');
@@ -1985,87 +2057,31 @@ async function updateRoomStatus(totalSeats, username, roomId) {
             });
             
             if (!response.ok) {
-                throw new Error(`HTTP er# 1. 首先查看所有表名
-sqlite3 /opt/jubensha/example_db.sqlite ".tables"
-
-# 2. 查看 user 表的所有用户
-sqlite3 /opt/jubensha/example_db.sqlite "SELECT id, username, email FROM user;"
-
-# 3. 专门查看 admin 用户的详细信息
-sqlite3 /opt/jubensha/example_db.sqlite ".headers on"
-sqlite3 /opt/jubensha/example_db.sqlite ".mode column"
-sqlite3 /opt/jubensha/example_db.sqlite "SELECT * FROM user WHERE username='admin';"# 1. 首先查看所有表名
-sqlite3 /opt/jubensha/example_db.sqlite ".tables"
-
-# 2. 查看 user 表的所有用户
-sqlite3 /opt/jubensha/example_db.sqlite "SELECT id, username, email FROM user;"
-
-# 3. 专门查看 admin 用户的详细信息
-sqlite3 /opt/jubensha/example_db.sqlite ".headers on"
-sqlite3 /opt/jubensha/example_db.sqlite ".mode column"
-sqlite3 /opt/jubensha/example_db.sqlite "SELECT * FROM user WHERE username='admin';"# 找到进程 ID (PID)
-ps aux | grep java
-
-# 停止应用(使用您看到的 PID,例如 212516)
-kill -9 212516# 第1步: 停止 Java 应用
-kill -9 212516
-
-# 等待2秒
-sleep 2
-
-# 第2步: 更新密码(注意:数据库文件名是 example_db.sqlite,字段名是 user_id)
-sqlite3 /opt/jubensha/example_db.sqlite "UPDATE sys_user SET password = '\$2a\$10\$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy' WHERE username = 'admin';"
-
-# 第3步: 验证更新
-sqlite3 /opt/jubensha/example_db.sqlite "SELECT user_id, username, password FROM sys_user WHERE username = 'admin';"
-
-# 第4步: 重启应用
-cd /opt/jubensha
-nohup java -Xmx512m -Xms256m -jar jubensha-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
-
-# 第5步: 查看启动状态
-sleep 3
-ps aux | grep java | grep jubensharor! status: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const result = await response.json();
-            
-            if (result.success && result.data && result.data.text) {
-                // 将识别结果填充到输入框
-                const recognizedText = result.data.text || '';
-                // ✅ 彻底清理所有空格
-                const cleanedText = recognizedText.replace(/\s+/g, '').trim();
+            const recognizedText = result && result.success && result.data ? (result.data.text || '') : '';
+            const cleanedText = recognizedText.replace(/\s+/g, '').trim();
+
+            if (cleanedText) {
                 chatInput.value = cleanedText;
                 chatInput.focus();
-                
-                if (cleanedText) {
-                    setChatInputHint('✅ 识别成功！您可以编辑后发送', 'success');
-                    console.log('[Vosk] 识别结果:', cleanedText);
-                } else {
-                    setChatInputHint('⚠️ 未能识别到语音内容，请重试', 'warn');
-                    console.warn('[Vosk] 识别结果为空');
-                }
-                
-                // 3秒后清除提示
-                setTimeout(() => {
-                    setChatInputHint('', '');
-                }, 3000);
+                setChatInputHint('✅ 识别成功！您可以编辑后发送', 'success');
+                console.log('[Vosk] 识别结果:', cleanedText);
+                setTimeout(() => setChatInputHint('', ''), 3000);
             } else {
-                // ✅ 区分真正的错误和成功但无内容的情况
-                const errorMsg = result.msg && result.msg !== '操作成功' ? result.msg : '未能识别到语音内容';
+                const errorMsg = result && result.msg && result.msg !== '操作成功' ? result.msg : '未能识别到语音内容';
                 throw new Error(errorMsg);
             }
-            
         } catch (error) {
             console.error('[Vosk] 识别失败:', error);
-            setChatInputHint('❌ 识别失败: ' + error.message, 'error');
-            
-            // 5秒后清除错误提示
-            setTimeout(() => {
-                setChatInputHint('', '');
-            }, 5000);
+            setChatInputHint('❌ 识别失败: ' + error.message, 'err');
+            setTimeout(() => setChatInputHint('', ''), 5000);
+        } finally {
+            voskRecordedBuffers = [];
         }
-    }    
+    }
     // 在页面加载完成后初始化录音按钮
     window.addEventListener('load', () => {
         // 延迟初始化，确保 DOM 已完全加载

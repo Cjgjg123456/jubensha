@@ -1,6 +1,7 @@
 package org.example.jubensha.controller;
 
 import org.example.jubensha.common.Result;
+import org.example.jubensha.entity.Script;
 import org.example.jubensha.mapper.GameMapper;
 import org.example.jubensha.net.GameServer;
 import org.example.jubensha.net.GameServerConfig;
@@ -8,8 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -145,8 +148,49 @@ public class OnlineController {
         if (success) {
             return Result.success("加入房间成功");
         } else {
-            return Result.fail("加入房间失败，房间不存在或已满");
+            return Result.fail("加入房间失败，房间不存在、已满或已开始");
         }
+    }
+
+    @PostMapping("/room/match")
+    public Result<Map<String, Object>> matchRecentRoom(@RequestParam String userId,
+                                                        @RequestParam String username,
+                                                        @RequestParam(required = false) String avatar,
+                                                        @RequestParam(required = false, defaultValue = "all") String scriptType,
+                                                        @RequestParam(required = false, defaultValue = "all") String playerCount,
+                                                        @RequestParam(required = false, defaultValue = "all") String scriptDiff) {
+        if (!hasText(userId) || !hasText(username) || "undefined".equals(userId) || "null".equals(userId)) {
+            return Result.fail("登录状态已失效，请重新登录");
+        }
+
+        Integer requestedPlayerCount = parsePositiveInt(playerCount);
+        Set<String> allowedScriptIds = buildAllowedScriptIds(scriptType, requestedPlayerCount, scriptDiff);
+        if (allowedScriptIds != null && allowedScriptIds.isEmpty()) {
+            return Result.fail("当前筛选条件下没有可匹配的剧本");
+        }
+
+        Map<String, Object> room = gameServer.matchRecentRoomViaRest(
+                userId,
+                username,
+                avatar,
+                allowedScriptIds,
+                requestedPlayerCount,
+                30_000L
+        );
+
+        if (room == null) {
+            return Result.fail("暂无可加入的房间，请先创建房间");
+        }
+
+        enrichRoomWithScriptInfo(room);
+        return Result.success(room);
+    }
+
+    @PostMapping("/room/leave")
+    public Result<String> leaveRoom(@RequestParam String roomId,
+                                    @RequestParam String userId) {
+        gameServer.leaveRoomViaRest(roomId, userId);
+        return Result.success("已离开房间");
     }
 
     @PostMapping("/room/{roomId}/chat")
@@ -154,9 +198,10 @@ public class OnlineController {
                                    @RequestParam String userId,
                                    @RequestParam String username,
                                    @RequestParam(required = false) String avatar,
-                                   @RequestParam String content) {
+                                   @RequestParam String content,
+                                   @RequestParam(required = false) String msgId) {
         // 注意：REST API 不需要 Socket 服务器运行
-        boolean success = gameServer.sendChatViaRest(roomId, userId, username, avatar, content);
+        boolean success = gameServer.sendChatViaRest(roomId, userId, username, avatar, content, msgId);
         if (success) {
             return Result.success("消息发送成功");
         } else {
@@ -188,5 +233,108 @@ public class OnlineController {
         }
         
         return Result.success(messages);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private Integer parsePositiveInt(String value) {
+        if (!hasText(value) || "all".equalsIgnoreCase(value)) {
+            return null;
+        }
+        try {
+            int parsed = Integer.parseInt(value.trim());
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Set<String> buildAllowedScriptIds(String scriptType, Integer playerCount, String scriptDiff) {
+        boolean filterByType = hasText(scriptType) && !"all".equalsIgnoreCase(scriptType);
+        boolean filterByCount = playerCount != null && playerCount > 0;
+        boolean filterByDifficulty = hasText(scriptDiff) && !"all".equalsIgnoreCase(scriptDiff);
+
+        if (!filterByType && !filterByCount && !filterByDifficulty) {
+            return null;
+        }
+
+        Set<String> allowedScriptIds = new HashSet<>();
+        List<Script> scripts = gameMapper.getScriptList();
+        for (Script script : scripts) {
+            if (script == null || script.getScriptId() == null) {
+                continue;
+            }
+            if (filterByType && !matchesType(script, scriptType)) {
+                continue;
+            }
+            if (filterByCount && (script.getPlayerCount() == null || !script.getPlayerCount().equals(playerCount))) {
+                continue;
+            }
+            if (filterByDifficulty && !matchesDifficulty(script.getDifficulty(), scriptDiff)) {
+                continue;
+            }
+            allowedScriptIds.add(String.valueOf(script.getScriptId()));
+        }
+        return allowedScriptIds;
+    }
+
+    private boolean matchesType(Script script, String scriptType) {
+        String tags = script.getTags() == null ? "" : script.getTags();
+        String title = script.getTitle() == null ? "" : script.getTitle();
+        String intro = script.getIntro() == null ? "" : script.getIntro();
+        return tags.contains(scriptType) || title.contains(scriptType) || intro.contains(scriptType);
+    }
+
+    private boolean matchesDifficulty(String difficulty, String selectedDiff) {
+        Integer value = parseDifficultyValue(difficulty);
+        if (value == null) {
+            return true;
+        }
+        if ("1".equals(selectedDiff)) {
+            return value <= 2;
+        }
+        if ("3".equals(selectedDiff)) {
+            return value == 3 || value == 4;
+        }
+        if ("5".equals(selectedDiff)) {
+            return value >= 5;
+        }
+        return true;
+    }
+
+    private Integer parseDifficultyValue(String difficulty) {
+        if (!hasText(difficulty)) {
+            return null;
+        }
+        String trimmed = difficulty.trim();
+        try {
+            return Integer.parseInt(trimmed.replaceAll("[^0-9]", ""));
+        } catch (NumberFormatException e) {
+            long stars = trimmed.chars().filter(ch -> ch == '★' || ch == '*').count();
+            return stars > 0 ? (int) stars : null;
+        }
+    }
+
+    private void enrichRoomWithScriptInfo(Map<String, Object> room) {
+        Object scriptIdValue = room.get("scriptId");
+        if (scriptIdValue == null) {
+            return;
+        }
+        try {
+            Script script = gameMapper.getScriptById(Integer.parseInt(String.valueOf(scriptIdValue)));
+            if (script == null) {
+                return;
+            }
+            room.put("scriptTitle", script.getTitle());
+            room.put("scriptIntro", script.getIntro());
+            room.put("scriptTags", script.getTags());
+            room.put("scriptDifficulty", script.getDifficulty());
+            room.put("scriptCoverUrl", script.getCoverUrl());
+            room.put("scriptPlayerCount", script.getPlayerCount());
+        } catch (Exception e) {
+            // 房间本身仍可返回，剧本展示信息缺失不影响匹配结果
+        }
     }
 }

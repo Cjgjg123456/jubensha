@@ -6,6 +6,7 @@ public class ServerChatMsg extends BaseMsg {
     private String username;
     private String avatar;
     private String content;
+    private String msgId;
 
     public ServerChatMsg() {
         super("SERVER_CHAT");
@@ -58,6 +59,14 @@ public class ServerChatMsg extends BaseMsg {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getMsgId() {
+        return msgId;
+    }
+
+    public void setMsgId(String msgId) {
+        this.msgId = msgId;
     }
 
     @Override

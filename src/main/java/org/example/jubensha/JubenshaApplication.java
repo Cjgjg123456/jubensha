@@ -5,12 +5,14 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 线上剧本杀系统启动类
  */
 @SpringBootApplication
-@MapperScan("org.example.jubensha.mapper") // 扫描Mapper接口
+@MapperScan("org.example.jubensha.mapper")
+@EnableScheduling // 扫描Mapper接口
 public class JubenshaApplication {
     public static void main(String[] args) {
         ConfigurableApplicationContext context = SpringApplication.run(JubenshaApplication.class, args);

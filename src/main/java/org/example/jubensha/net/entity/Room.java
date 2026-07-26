@@ -1,6 +1,7 @@
 package org.example.jubensha.net.entity;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,8 +23,8 @@ public class Room {
     private Integer gameId;
 
     public Room() {
-        this.players = new ArrayList<>();
-        this.messages = new ArrayList<>();
+        this.players = Collections.synchronizedList(new ArrayList<>());
+        this.messages = Collections.synchronizedList(new ArrayList<>());
         this.status = STATUS_IDLE;
         this.maxPlayers = 6;
         this.createTime = System.currentTimeMillis();
@@ -88,11 +89,13 @@ public class Room {
     }
 
     public List<Player> getPlayers() {
-        return players;
+        synchronized (players) {
+            return new ArrayList<>(players);
+        }
     }
 
     public void setPlayers(List<Player> players) {
-        this.players = players;
+        this.players = Collections.synchronizedList(new ArrayList<>(players));
     }
 
     public long getCreateTime() {
@@ -104,39 +107,71 @@ public class Room {
     }
 
     public boolean isFull() {
-        return players.size() >= maxPlayers;
+        synchronized (players) {
+            return players.size() >= maxPlayers;
+        }
+    }
+
+    public boolean hasRealPlayers() {
+        synchronized (players) {
+            return players.stream().anyMatch(p -> {
+                String uid = p.getUserId();
+                return uid != null && !uid.startsWith("ai_");
+            });
+        }
     }
 
     public boolean addPlayer(Player player) {
-        if (isFull()) {
+        if (player == null || player.getUserId() == null) {
             return false;
         }
-        return players.add(player);
+        synchronized (players) {
+            if (players.stream().anyMatch(p -> player.getUserId().equals(p.getUserId()))) {
+                return false;
+            }
+            if (players.size() >= maxPlayers) {
+                return false;
+            }
+            return players.add(player);
+        }
     }
 
     public boolean removePlayer(String userId) {
-        return players.removeIf(p -> p.getUserId().equals(userId));
+        synchronized (players) {
+            return players.removeIf(p -> p.getUserId().equals(userId));
+        }
     }
 
     public Player getPlayer(String userId) {
-        return players.stream().filter(p -> p.getUserId().equals(userId)).findFirst().orElse(null);
+        synchronized (players) {
+            return players.stream().filter(p -> p.getUserId().equals(userId)).findFirst().orElse(null);
+        }
     }
 
     public int getPlayerCount() {
-        return players.size();
+        synchronized (players) {
+            return players.size();
+        }
     }
 
     public List<Map<String, Object>> getMessages() {
-        return messages;
+        synchronized (messages) {
+            return new ArrayList<>(messages);
+        }
     }
 
     public void setMessages(List<Map<String, Object>> messages) {
-        this.messages = messages;
+        this.messages = Collections.synchronizedList(new ArrayList<>(messages));
     }
 
     public void addMessage(String userId, String username, String avatar, String content) {
+        addMessage(userId, username, avatar, content, null);
+    }
+
+    public void addMessage(String userId, String username, String avatar, String content, String msgId) {
         Map<String, Object> message = new HashMap<>();
-        message.put("id", java.util.UUID.randomUUID().toString());
+        message.put("id", msgId != null && !msgId.isBlank() ? msgId : java.util.UUID.randomUUID().toString());
+        message.put("msgId", message.get("id"));
         message.put("userId", userId);
         message.put("username", username);
         message.put("avatar", avatar);

@@ -1,9 +1,9 @@
 package org.example.jubensha.service;
 
-import com.alibaba.fastjson2.JSONObject;
 import org.example.jubensha.config.PythonVoiceConfig;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -25,7 +25,11 @@ public class PythonVoiceService {
 
     public PythonVoiceService(PythonVoiceConfig config) {
         this.config = config;
-        this.restTemplate = new RestTemplate();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        int timeoutMillis = Math.max(1, config.getTimeout()) * 1000;
+        requestFactory.setConnectTimeout(timeoutMillis);
+        requestFactory.setReadTimeout(timeoutMillis);
+        this.restTemplate = new RestTemplate(requestFactory);
     }
 
     /**

@@ -736,18 +736,18 @@
     
     async function startRecording() {
         const recordBtn = document.getElementById('recordVoiceBtn');
-        
+
         try {
-            // ✅ 检查浏览器是否支持 mediaDevices
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 alert('您的浏览器不支持语音录音功能。请使用 Chrome、Firefox、Edge 等现代浏览器，并确保通过 HTTPS 访问（ localhost 除外）。');
-                console.error('[录音] 浏览器不支持 mediaDevices API');
                 return;
             }
-            
+
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
-            mediaRecorder = new MediaRecorder(stream);
+
+            // ✅ 优先使用纯音频 MIME 类型，避免生成 video/webm 导致播放失败
+            const mimeType = getSupportedAudioMimeType();
+            mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
             audioChunks = [];
             
             mediaRecorder.ondataavailable = (e) => {
@@ -758,7 +758,8 @@
             
             mediaRecorder.onstop = async () => {
                 try {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioType = mediaRecorder && mediaRecorder.mimeType ? mediaRecorder.mimeType : 'audio/webm';
+                    const audioBlob = new Blob(audioChunks, { type: audioType });
                     await sendVoiceMessage(audioBlob);
                 } catch (error) {
                     console.error('[录音] 发送语音消息失败:', error);
@@ -852,7 +853,7 @@
                 
                 console.log(`[语音] 准备通过WebSocket发送 | URL: ${voiceUrl} | 房间ID: ${currentRoomId} | 连接状态: ${window.socket?.readyState === WebSocket.OPEN ? '已连接' : '未连接'}`);
                 
-                // 通过 WebSocket 发送语音消息（包含消息ID用于去重）
+                // 优先通过 WebSocket 发送，若未连接则回退到 REST API
                 if (window.socket && window.socket.readyState === WebSocket.OPEN && currentRoomId) {
                     window.socket.send(JSON.stringify({
                         type: 'CHAT',
@@ -860,15 +861,31 @@
                         userId: userId,
                         username: username,
                         content: voiceContent,
-                        msgId: msgId  // ✅ 添加消息ID
+                        msgId: msgId
                     }));
-                    
                     console.log('[语音] WebSocket消息发送成功，本地显示消息');
-                    // ✅ 本地显示时传入msgId，避免WebSocket回传时重复显示
                     addChatMessage(username, voiceContent, true, msgId);
+                } else if (currentRoomId) {
+                    // ✅ WebSocket 未连接时，回退到 REST API
+                    console.log('[语音] WebSocket未连接，使用REST API发送');
+                    const params = new URLSearchParams({
+                        userId, username, content: voiceContent, msgId
+                    });
+                    const chatRes = await fetch(`/api/online/room/${currentRoomId}/chat`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: params
+                    }).then(r => r.json());
+                    if (chatRes.success) {
+                        console.log('[语音] REST API发送成功');
+                        addChatMessage(username, voiceContent, true, msgId);
+                    } else {
+                        console.error('[语音] REST API发送失败:', chatRes.msg);
+                    }
                 } else {
-                    console.error('[语音] 无法发送：', window.socket ? 'WebSocket未连接' : 'socket不存在', '房间ID:', currentRoomId);
-                    alert('无法发送语音消息：未连接到房间');
+                    // AI 模式，仅本地显示
+                    console.log('[语音] AI模式，仅本地显示');
+                    addChatMessage(username, voiceContent, true, msgId);
                 }
             } else {
                 console.error('[语音] 上传失败 | 错误信息:', uploadRes.msg);
@@ -933,7 +950,7 @@
             if (indicator) indicator.style.display = 'none';
             
             // 尝试使用 Web Audio API
-            tryPlayWithWebAudioSimple(fullUrl, element, indicator, iconElement);
+            retryPlayWithAudio(fullUrl, element, indicator, iconElement);
         };
         
         // 尝试播放
@@ -947,49 +964,38 @@
             if (e.name === 'NotAllowedError') {
                 alert('需要先与页面交互后才能播放语音\n请先点击页面任意位置');
             } else {
-                tryPlayWithWebAudioSimple(fullUrl, element, indicator, iconElement);
+                retryPlayWithAudio(fullUrl, element, indicator, iconElement);
             }
         });
     }
     
-    // 简化版 Web Audio API 播放
-    function tryPlayWithWebAudioSimple(url, element, indicator, iconElement) {
-        console.log('[语音播放] 尝试使用简化版 Web Audio API');
-        
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                return response.arrayBuffer();
-            })
-            .then(arrayBuffer => {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                return audioContext.decodeAudioData(arrayBuffer).then(audioBuffer => ({audioContext, audioBuffer}));
-            })
-            .then(({audioContext, audioBuffer}) => {
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-                
-                if (iconElement) iconElement.innerHTML = '🔇';
-                if (indicator) indicator.style.display = 'inline-block';
-                
-                source.onended = function() {
-                    if (iconElement) iconElement.innerHTML = '🔊';
-                    if (indicator) indicator.style.display = 'none';
-                    audioContext.close();
-                };
-                
-                source.start();
-                console.log('[语音播放] Web Audio API 播放成功');
-            })
-            .catch(e => {
-                console.error('[语音播放] 所有播放方式都失败:', e);
-                if (iconElement) iconElement.innerHTML = '🔊';
-                if (indicator) indicator.style.display = 'none';
-                alert('无法播放语音: ' + e.message);
-            });
+    // 使用原生 <audio> 回放（支持 opus WebM），不再用 decodeAudioData 解码
+    function retryPlayWithAudio(url, element, indicator, iconElement) {
+        console.log('[语音播放] 重试用 Audio 元素播放:', url);
+        const audio = new Audio(url);
+        audio.onplaying = () => {
+            if (iconElement) iconElement.innerHTML = '🔇';
+            if (indicator) indicator.style.display = 'inline-block';
+        };
+        audio.onended = () => {
+            if (iconElement) iconElement.innerHTML = '🔊';
+            if (indicator) indicator.style.display = 'none';
+        };
+        audio.onerror = () => {
+            console.error('[语音播放] Audio 重试也失败, 错误代码:', audio.error ? audio.error.code : '未知');
+            if (iconElement) iconElement.innerHTML = '🔊';
+            if (indicator) indicator.style.display = 'none';
+            alert('无法播放语音: 浏览器不支持此音频格式。请尝试用 Chrome 或 Edge 录制新的语音消息。');
+        };
+        audio.play().catch(e => {
+            console.error('[语音播放] 重试 play() 失败:', e.message);
+            alert('无法播放语音: ' + e.message);
+        });
+    }
+
+    function getSupportedAudioMimeType() {
+        const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+        return candidates.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || '';
     }
     
     function stopAllVoices() {

@@ -216,6 +216,12 @@ public interface GameMapper {
     @Insert("INSERT INTO user_browse_history (user_id, target_id, target_type) VALUES (#{userId}, #{scriptId}, 1)")
     void insertBrowseHistory(@Param("userId") Long userId, @Param("scriptId") Integer scriptId);
 
+    @Select("SELECT COUNT(*) FROM user_browse_history WHERE user_id = #{userId} AND target_id = #{scriptId} AND target_type = 1 AND browse_time > datetime('now', '-5 minutes')")
+    int countRecentBrowseByUser(@Param("userId") Long userId, @Param("scriptId") Integer scriptId);
+
+    @Update("UPDATE user_browse_history SET browse_time = CURRENT_TIMESTAMP WHERE user_id = #{userId} AND target_id = #{scriptId} AND target_type = 1 AND history_id = (SELECT MAX(history_id) FROM user_browse_history WHERE user_id = #{userId} AND target_id = #{scriptId} AND target_type = 1)")
+    int updateRecentBrowseTime(@Param("userId") Long userId, @Param("scriptId") Integer scriptId);
+
     @Insert("INSERT INTO user_evaluate_record (user_id, script_id, script_name, score, content) VALUES (#{userId}, #{scriptId}, #{scriptName}, #{score}, #{content})")
     void insertEvaluateRecord(@Param("userId") Long userId, @Param("scriptId") Integer scriptId, @Param("scriptName") String scriptName, @Param("score") Integer score, @Param("content") String content);
 

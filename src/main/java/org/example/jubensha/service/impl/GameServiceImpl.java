@@ -747,9 +747,18 @@ public class GameServiceImpl implements GameService {
     @Override
     public void recordBrowseHistory(Long userId, Integer scriptId) {
         try {
-            gameMapper.insertBrowseHistory(userId, scriptId);
+            int recent = gameMapper.countRecentBrowseByUser(userId, scriptId);
+            if (recent > 0) {
+                gameMapper.updateRecentBrowseTime(userId, scriptId);
+            } else {
+                gameMapper.insertBrowseHistory(userId, scriptId);
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            // 去重逻辑失败时降级为直接插入
+            try {
+                gameMapper.insertBrowseHistory(userId, scriptId);
+            } catch (Exception ignored) {
+            }
         }
     }
 

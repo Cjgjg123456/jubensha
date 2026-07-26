@@ -9,9 +9,12 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -557,6 +560,11 @@ public class GameServer {
 
     public List<Map<String, Object>> getRoomList() {
         return rooms.values().stream()
+                .filter(r -> Room.STATUS_IDLE.equals(r.getStatus()))
+                .filter(r -> r.getPlayerCount() > 0)
+                .filter(Room::hasRealPlayers)
+                .sorted((a, b) -> Long.compare(b.getCreateTime(), a.getCreateTime()))
+                .limit(1)
                 .map(r -> {
                     Map<String, Object> map = new HashMap<>();
                     map.put("roomId", r.getRoomId());
@@ -647,21 +655,114 @@ public class GameServer {
             System.out.println("[REST API] 加入房间失败，房间不存在: " + roomId);
             return false;
         }
-        
-        if (room.isFull()) {
-            System.out.println("[REST API] 加入房间失败，房间已满: " + roomId);
+
+        if (!Room.STATUS_IDLE.equals(room.getStatus())) {
+            System.out.println("[REST API] 加入房间失败，房间不在等待状态: " + roomId);
             return false;
         }
-        
+
+        if (room.getPlayer(userId) != null) {
+            System.out.println("[REST API] " + username + " 已在房间中: " + roomId);
+            return true;
+        }
+
         Player roomPlayer = new Player(userId, username, avatar != null ? avatar : "");
         roomPlayer.setRoomId(roomId);
-        room.addPlayer(roomPlayer);
-        
+        if (!room.addPlayer(roomPlayer)) {
+            System.out.println("[REST API] 加入房间失败，房间已满或用户重复: " + roomId);
+            return false;
+        }
+
         System.out.println("[REST API] " + username + " 加入房间: " + roomId);
         return true;
     }
 
+    public synchronized Map<String, Object> matchRecentRoomViaRest(String userId,
+                                                                    String username,
+                                                                    String avatar,
+                                                                    Set<String> allowedScriptIds,
+                                                                    Integer playerCount,
+                                                                    long withinMillis) {
+        long now = System.currentTimeMillis();
+
+        Room existingRoom = findUserRoom(userId);
+        if (existingRoom != null) {
+            if (isMatchCandidate(existingRoom, userId, allowedScriptIds, playerCount, true)) {
+                System.out.println("[REST API] 用户已锁定匹配房间，直接返回: " + existingRoom.getRoomId());
+                return getRoomInfo(existingRoom.getRoomId());
+            }
+            System.out.println("[REST API] 匹配失败，用户已在其他房间中: " + userId);
+            return null;
+        }
+
+        List<Room> candidates = rooms.values().stream()
+                .filter(room -> isMatchCandidate(room, userId, allowedScriptIds, playerCount, false))
+                .filter(Room::hasRealPlayers)
+                .sorted((a, b) -> Long.compare(b.getCreateTime(), a.getCreateTime()))
+                .limit(1)
+                .collect(Collectors.toList());
+
+        for (Room room : candidates) {
+            if (!isMatchCandidate(room, userId, allowedScriptIds, playerCount, false)) {
+                continue;
+            }
+            Player roomPlayer = new Player(userId, username, avatar != null ? avatar : "");
+            roomPlayer.setRoomId(room.getRoomId());
+            if (room.addPlayer(roomPlayer)) {
+                System.out.println("[REST API] 匹配成功: " + username + " -> " + room.getRoomId());
+                return getRoomInfo(room.getRoomId());
+            }
+        }
+
+        System.out.println("[REST API] 未找到可加入房间: " + username);
+        return null;
+    }
+
+    public synchronized boolean leaveRoomViaRest(String roomId, String userId) {
+        Room room = rooms.get(roomId);
+        if (room == null) {
+            return true;
+        }
+        boolean removed = room.removePlayer(userId);
+        if (removed) {
+            System.out.println("[REST API] 用户离开房间: " + userId + " -> " + roomId);
+        }
+        if (room.getPlayerCount() == 0) {
+            rooms.remove(roomId);
+            System.out.println("[REST API] 房间无人，已解散: " + roomId);
+        }
+        return true;
+    }
+
+    private Room findUserRoom(String userId) {
+        if (userId == null) return null;
+        return rooms.values().stream()
+                .filter(room -> room.getPlayer(userId) != null)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean isMatchCandidate(Room room,
+                                     String userId,
+                                     Set<String> allowedScriptIds,
+                                     Integer playerCount,
+                                     boolean allowExistingUser) {
+        if (room == null) return false;
+        if (!Room.STATUS_IDLE.equals(room.getStatus())) return false;
+        boolean userAlreadyInRoom = room.getPlayer(userId) != null;
+        if (room.getHostId() != null && room.getHostId().equals(userId) && !allowExistingUser) return false;
+        if (!allowExistingUser && userAlreadyInRoom) return false;
+        if (!userAlreadyInRoom && room.isFull()) return false;
+        if (allowedScriptIds != null && !allowedScriptIds.isEmpty() && !allowedScriptIds.contains(room.getScriptId())) return false;
+        if (playerCount != null && playerCount > 0 && room.getMaxPlayers() != playerCount) return false;
+        return true;
+    }
+
     public synchronized boolean sendChatViaRest(String roomId, String userId, String username, String avatar, String content) {
+        return sendChatViaRest(roomId, userId, username, avatar, content, null);
+    }
+
+    public synchronized boolean sendChatViaRest(String roomId, String userId, String username, String avatar, String content, String msgId) {
         Room room = rooms.get(roomId);
         if (room == null) {
             System.out.println("[REST API] 发送消息失败，房间不存在: " + roomId);
@@ -669,10 +770,11 @@ public class GameServer {
         }
         
         // ✅ 添加消息到房间列表
-        room.addMessage(userId, username, avatar != null ? avatar : "", content);
-        
+        room.addMessage(userId, username, avatar != null ? avatar : "", content, msgId);
+
         // ✅ 创建聊天消息
         ServerChatMsg chatMsg = new ServerChatMsg(roomId, userId, username, avatar, content);
+        chatMsg.setMsgId(msgId);
         
         // ✅ 通过 Socket 广播给在线玩家
         System.out.println("[REST API] 开始广播消息到房间 " + roomId + " 的 " + room.getPlayerCount() + " 名玩家");
@@ -807,15 +909,20 @@ public class GameServer {
         }
     }
 
-    private void cleanupIdleRooms() {
+    private synchronized void cleanupIdleRooms() {
         long currentTime = System.currentTimeMillis();
         long timeoutMillis = IDLE_ROOM_TIMEOUT_MINUTES * 60 * 1000;
-        
+
         List<String> roomsToRemove = rooms.entrySet().stream()
                 .filter(entry -> {
                     Room room = entry.getValue();
                     long age = currentTime - room.getCreateTime();
-                    boolean isIdleOrFinished = Room.STATUS_IDLE.equals(room.getStatus()) 
+                    // 空房间立即清除
+                    if (room.getPlayerCount() == 0) {
+                        return true;
+                    }
+                    // IDLE/FINISHED 超时清除
+                    boolean isIdleOrFinished = Room.STATUS_IDLE.equals(room.getStatus())
                             || Room.STATUS_FINISHED.equals(room.getStatus());
                     return isIdleOrFinished && age > timeoutMillis;
                 })

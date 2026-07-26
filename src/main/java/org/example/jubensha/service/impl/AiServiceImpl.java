@@ -22,7 +22,7 @@ public class AiServiceImpl implements AiService {
     // 新增：DeepSeek API 地址（使用自定义端点）
     private static final String API_URL = "https://api.deepseek.com/v1/chat/completions";
     // 新增：自定义端点 ID（替换为您在 DeepSeek 控制台创建的端点 ID）
-    private static final String ENDPOINT_ID = "deepseek-chat";
+    private static final String ENDPOINT_ID = "deepseek-v4-pro";
     // 新增：RestTemplate 用于发送 HTTP 请求
     private final RestTemplate restTemplate = new RestTemplate();
     // 新增：生成角色回复（单轮对话）
@@ -54,7 +54,7 @@ public class AiServiceImpl implements AiService {
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", ENDPOINT_ID);
             requestBody.put("temperature", 0.7);
-            requestBody.put("max_tokens", 500);
+            requestBody.put("max_tokens", 1500);
 
             // 将拼装好的历史消息（包含 system, user, assistant）直接传给大模型
             requestBody.put("messages", messages);
