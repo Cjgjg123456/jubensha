@@ -142,7 +142,8 @@ public class GameController {
         try {
             Integer gameId = (Integer) payload.get("gameId");
             List<Map<String, String>> history = (List<Map<String, String>>) payload.get("history");
-            return Result.success(gameService.handleAiChat(gameId, history));
+            String targetRoleName = (String) payload.get("targetRoleName");
+            return Result.success(gameService.handleAiChat(gameId, history, targetRoleName));
         } catch (Exception e) {
             e.printStackTrace();
             return Result.fail("大模型服务异常：" + e.getMessage());

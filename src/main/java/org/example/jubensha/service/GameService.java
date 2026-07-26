@@ -39,7 +39,7 @@ public interface GameService {
     GameProgress nextPhase(Integer g);
 
     List<Map<String, String>> getAiResponses(Integer gameId);
-    Map<String, Object> handleAiChat(Integer gameId, List<Map<String, String>> history);
+    Map<String, Object> handleAiChat(Integer gameId, List<Map<String, String>> history, String targetRoleName);
 
     Map<String, Object> getDmOpening(Integer gameId);
     Map<String, Object> getDmHelp(Integer gameId);

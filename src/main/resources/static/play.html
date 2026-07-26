@@ -130,9 +130,13 @@
         .msg-dm .msg-bubble { background: rgba(142, 45, 226, 0.15); padding: 10px 12px; border-radius: 8px; width: fit-content; max-width: 90%; font-size: 13px; line-height: 1.5; border: 1px solid #8E2DE2; color: #f3e5f5; box-shadow: 0 0 10px rgba(142, 45, 226, 0.2); }
 
         @keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
-        .chat-input { padding: 15px; display: flex; gap: 10px; border-top: 1px solid rgba(255,255,255,0.1); }
-        .chat-input input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 6px; outline: none; font-size: 13px; }
-        .chat-input button { background: #ff6600; color: #fff; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .chat-input { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .chat-input .input-row { display: flex; gap: 6px; align-items: center; }
+        .chat-input .input-row input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 8px 10px; border-radius: 6px; outline: none; font-size: 13px; min-width: 0; }
+        .chat-input .input-row button { background: #ff6600; color: #fff; border: none; padding: 0 10px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; white-space: nowrap; font-size: 13px; }
+        .chat-input .input-row .btn-voice { background: transparent; border: 1px solid rgba(255,255,255,0.3); font-size: 16px; padding: 0 6px; min-width: 30px; }
+        .chat-input select { background: #1a1a2e; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 5px 6px; font-size: 12px; outline: none; width: 100%; }
+        .chat-input .select-label { font-size: 11px; color: #888; white-space: nowrap; }
         .btn-voice { width: 36px; height: 36px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; background: rgba(255,255,255,0.05); color: #fff; font-size: 16px; cursor: pointer; transition: all 0.2s; }
         .btn-voice:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
         #recordVoiceBtn.recording-active { background: linear-gradient(135deg, #ff5252, #d32f2f); border-color: #ff1744; box-shadow: 0 0 20px rgba(255,23,68,0.6); animation: recordingPulse 0.8s ease-in-out infinite; transform: scale(1.1); }
@@ -304,10 +308,18 @@
         </div>
 
         <div class="chat-input">
-            <input type="text" id="chatInput" placeholder="以角色的口吻说点什么...">
-            <button type="button" id="voskVoiceBtn" class="btn-voice" title="点击开始语音转文字（需允许麦克风权限）" aria-label="语音转文字">🎤</button>
-            <button type="button" id="recordVoiceBtn" class="btn-voice" title="点击录音5秒后自动发送" aria-label="点击录音">🎙️</button>
-            <button id="sendBtn" onclick="sendMessage()">发送</button>
+            <div class="input-row">
+                <span class="select-label">对谁说</span>
+                <select id="targetRoleSelect">
+                    <option value="">自动选择</option>
+                </select>
+            </div>
+            <div class="input-row">
+                <input type="text" id="chatInput" placeholder="以角色的口吻说点什么...">
+                <button type="button" id="voskVoiceBtn" class="btn-voice" title="语音转文字">🎤</button>
+                <button type="button" id="recordVoiceBtn" class="btn-voice" title="点击录音">🎙</button>
+                <button id="sendBtn" onclick="sendMessage()">发送</button>
+            </div>
         </div>
     </div>
 </div>
@@ -1245,6 +1257,16 @@
                     document.getElementById('roleDesc').innerText = myRole.background;
                     if(myRole.avatar) document.getElementById('roleAvatar').src = myRole.avatar;
                 }
+                // 填充 AI 角色选择器（排除玩家自己的角色）
+                const sel = document.getElementById('targetRoleSelect');
+                allRoles.forEach(r => {
+                    if (r.roleId !== contentData.roleId && r.name) {
+                        const opt = document.createElement('option');
+                        opt.value = r.name;
+                        opt.textContent = r.name + (r.isAi === 1 ? ' (AI)' : '');
+                        sel.appendChild(opt);
+                    }
+                });
             }
 
             // 🟢 处理古建图鉴数据
@@ -1933,9 +1955,10 @@
                 
                 sendBtn.innerText = "AI思考中...";
 
+                const targetRoleName = document.getElementById('targetRoleSelect')?.value || '';
                 const res = await fetch(`${API_BASE}/chat`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ gameId: parseInt(currentGameId), history: chatHistory })
+                    body: JSON.stringify({ gameId: parseInt(currentGameId), history: chatHistory, targetRoleName: targetRoleName })
                 }).then(r => r.json());
 
                 if (res.success && res.data) {

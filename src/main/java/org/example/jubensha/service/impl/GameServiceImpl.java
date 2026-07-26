@@ -570,12 +570,12 @@ public class GameServiceImpl implements GameService {
     }
 
     @Override
-    public Map<String, Object> handleAiChat(Integer gameId, List<Map<String, String>> history) {
+    public Map<String, Object> handleAiChat(Integer gameId, List<Map<String, String>> history, String targetRoleName) {
         GameProgress progress = gameMapper.getGameProgress(gameId);
         if (progress == null) {
             throw new RuntimeException("游戏进度不存在");
         }
-        
+
         Script script = gameMapper.getScriptById(progress.getScriptId());
         if (script == null) {
             throw new RuntimeException("剧本不存在");
@@ -587,23 +587,50 @@ public class GameServiceImpl implements GameService {
         }
 
         List<RoleActContent> aiContents = gameMapper.getAiRoleContentsByAct(progress.getCurrentActId(), progress.getUserRoleId());
-        
-        RoleActContent aiContent;
-        Role aiRole;
-        
-        if (aiContents.isEmpty()) {
-            aiRole = new Role();
-            aiRole.setName("神秘NPC");
-            aiRole.setRoleId(-1);
-            aiContent = new RoleActContent();
-            aiContent.setContent("你是一个神秘的NPC，正在参与这场剧本杀游戏。请根据玩家的发言进行回应，保持剧情氛围。");
-        } else {
-            aiContent = aiContents.get(0);
-            aiRole = gameMapper.getRoleById(aiContent.getRoleId());
+
+        RoleActContent aiContent = null;
+        Role aiRole = null;
+
+        // 如果玩家指定了要对话的角色名，尝试匹配
+        if (targetRoleName != null && !targetRoleName.trim().isEmpty() && !aiContents.isEmpty()) {
+            String target = targetRoleName.trim();
+            for (RoleActContent rac : aiContents) {
+                Role r = gameMapper.getRoleById(rac.getRoleId());
+                if (r != null && r.getName() != null && r.getName().contains(target)) {
+                    aiRole = r;
+                    aiContent = rac;
+                    break;
+                }
+            }
+            // 如果精确匹配不到，尝试模糊匹配（角色名包含玩家输入 或 玩家输入包含角色名）
             if (aiRole == null) {
+                for (RoleActContent rac : aiContents) {
+                    Role r = gameMapper.getRoleById(rac.getRoleId());
+                    if (r != null && r.getName() != null && target.contains(r.getName())) {
+                        aiRole = r;
+                        aiContent = rac;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 没匹配到或没指定，取第一个（保持向后兼容）
+        if (aiContent == null) {
+            if (aiContents.isEmpty()) {
                 aiRole = new Role();
                 aiRole.setName("神秘NPC");
                 aiRole.setRoleId(-1);
+                aiContent = new RoleActContent();
+                aiContent.setContent("你是一个神秘的NPC，正在参与这场剧本杀游戏。请根据玩家的发言进行回应，保持剧情氛围。");
+            } else {
+                aiContent = aiContents.get(0);
+                aiRole = gameMapper.getRoleById(aiContent.getRoleId());
+                if (aiRole == null) {
+                    aiRole = new Role();
+                    aiRole.setName("神秘NPC");
+                    aiRole.setRoleId(-1);
+                }
             }
         }
 
