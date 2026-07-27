@@ -89,7 +89,14 @@ public class UserController {
             @RequestParam(value = "profile", required = false) String profile,
             @RequestParam(value = "avatar", required = false) MultipartFile avatar) {
         try {
+            // 先查到用户ID（UPDATE需要userId作为WHERE条件）
+            User existing = userService.getUserByUsername(username);
+            if (existing == null) {
+                return Result.fail("用户不存在");
+            }
+
             User user = new User();
+            user.setUserId(existing.getUserId());
             user.setUsername(username);
             user.setNickname(nickname);
             user.setRealName(realName);

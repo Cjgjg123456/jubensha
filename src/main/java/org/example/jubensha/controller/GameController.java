@@ -155,9 +155,14 @@ public class GameController {
 
     @PostMapping("/submitVote")
     public Result<Map<String, Object>> submitVote(@RequestBody Map<String, Object> payload) {
-        Integer gameId = Integer.valueOf(payload.get("gameId").toString());
-        Integer votedRoleId = Integer.valueOf(payload.get("votedRoleId").toString());
-        return Result.success(gameService.submitVote(gameId, votedRoleId));
+        try {
+            Integer gameId = Integer.valueOf(payload.get("gameId").toString());
+            Integer votedRoleId = Integer.valueOf(payload.get("votedRoleId").toString());
+            return Result.success(gameService.submitVote(gameId, votedRoleId));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.fail("投票失败：" + e.getMessage());
+        }
     }
 
     @PostMapping("/evaluate")
