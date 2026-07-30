@@ -1019,9 +1019,8 @@ async function updateRoomStatus(totalSeats, username, roomId) {
                 if (result.success && result.data) {
                     const gameId = result.data.gameId;
                     console.log('[开始游戏] 游戏创建成功，gameId:', gameId);
-                    alert("🚀 游戏即将开始！");
-                    // 统一跳转到 play.html
-                    window.location.href = `play.html?gameId=${gameId}&scriptId=${targetScriptId}&roleId=${window.selectedRoleId}`;
+                    // 直接跳转，不用alert（异步中alert会阻塞跳转）
+                    window.location.assign(`play.html?gameId=${gameId}&scriptId=${targetScriptId}&roleId=${window.selectedRoleId}`);
                 } else {
                     alert("❌ 开始游戏失败：" + (result.msg || "未知错误"));
                 }

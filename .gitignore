@@ -38,6 +38,9 @@ jubensha_libs/
 vosk-model-small-cn-0.22/
 vosk-win64-0.3.45/
 
+# 3D models (too large)
+models/
+
 # User uploads
 uploads/
 jubensha_uploads/

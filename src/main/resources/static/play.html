@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>古建奇案馆 - 阅读剧本与互动搜证</title>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
     <script>
     // ⚡ 性能优化：延迟加载非关键脚本
     function loadScript(src) {
@@ -300,6 +303,11 @@
 
     <div class="chat-sidebar">
         <div class="chat-header" id="chatTitle">全息公屏 (AI沉浸中)</div>
+
+        <div id="dm-avatar-panel" style="width:100%; height:240px; background:radial-gradient(ellipse at center, rgba(0,229,255,0.05) 0%, transparent 70%); position:relative; overflow:hidden; border-bottom:1px solid rgba(255,255,255,0.05);">
+            <canvas id="dm-canvas" style="width:100%;height:100%;"></canvas>
+            <div id="dm-status" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:11px;color:#888;transition:0.3s;">待命中</div>
+        </div>
 
         <button id="btn-dm-summon" class="btn-dm-summon" onclick="summonDM()">🛎️ 卡关了？召唤 DM 提示</button>
 
@@ -1668,12 +1676,15 @@
             </div>
         `;
         chatBox.scrollTop = chatBox.scrollHeight;
-        
+
+        // 触发3D数字人说话
+        if (window.dmAvatarSpeak) window.dmAvatarSpeak(text);
+
         // ✅ 保存到 chatHistory，使用统一格式
-        chatHistory.push({ 
-            role: 'assistant', 
+        chatHistory.push({
+            role: 'assistant',
             username: displayName,
-            content: text 
+            content: text
         });
     }
 
@@ -1710,6 +1721,7 @@
         const btn = document.getElementById('btn-dm-summon');
         btn.innerText = "⏳ DM 思考中..."; btn.disabled = true;
         receiveDmMessage("🎤 DM 主持人", "（DM 正在注视着你们的讨论和线索，准备给出提示...）");
+        if (window.dmAvatarThink) window.dmAvatarThink();
 
         try {
             const res = await fetch(`${API_BASE}/dm/help?gameId=${currentGameId}`, { method: 'POST' }).then(r => r.json());
@@ -2028,6 +2040,154 @@
             console.log('[幕次检查] 非最后一幕，恢复按钮显示');
         }
     }
+</script>
+
+<script type="module">
+// ==================== DM 3D数字人控制器 ====================
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+const canvas = document.getElementById('dm-canvas');
+const statusEl = document.getElementById('dm-status');
+
+// Three.js 初始化
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+camera.position.set(0, 0.02, 0.08);
+camera.lookAt(0, 0.03, 0);
+
+// 灯光
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+keyLight.position.set(0.5, 1, 0.5);
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0xffccaa, 0.4);
+fillLight.position.set(-0.3, 0.5, -0.2);
+scene.add(fillLight);
+
+let model, mixer, animations = {}, currentAction;
+
+// Draco 解压器
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/');
+dracoLoader.setDecoderConfig({ type: 'js' });
+
+// 加载模型
+const loader = new GLTFLoader();
+loader.setDRACOLoader(dracoLoader);
+loader.load('/models/dm_avatar.glb', (gltf) => {
+    model = gltf.scene;
+
+    // 计算包围盒，自动适配相机
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    console.log('[DM] 模型大小:', size.toArray().map(v => v.toFixed(3)), '中心:', center.toArray().map(v => v.toFixed(3)));
+
+    // 模型保持原位，直接放入场景
+    scene.add(model);
+
+    // 相机：拉远 + 抬高视线，确保头和脚都在画面内
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const dist = maxDim * 4.5;
+    camera.position.set(0, box.min.y + size.y * 2.25, center.z + dist * 1.5);
+    camera.lookAt(center.x, box.min.y + size.y * 0.55, center.z);
+
+    // 灯光加强 — 确保模型不黑
+    const intensity = maxDim * 15;
+    keyLight.intensity = intensity;
+    keyLight.position.set(dist, dist, dist);
+    fillLight.intensity = intensity * 0.3;
+
+    // 注册动画
+    mixer = new THREE.AnimationMixer(model);
+    gltf.animations.forEach(clip => {
+        const name = clip.name.replace(/\.\d+$/, '').split('-')[0];
+        if (!animations[name]) animations[name] = clip;
+    });
+    console.log('[DM] 模型加载完成，动画:', Object.keys(animations));
+
+    // 播放待机（walk-think）
+    playAnim('walk');
+    statusEl.textContent = 'DM 在线';
+
+}, undefined, (err) => {
+    console.error('[DM] 模型加载失败:', err);
+    statusEl.textContent = '模型加载失败';
+});
+
+function playAnim(name) {
+    if (!mixer || !animations[name]) return;
+    if (currentAction) currentAction.fadeOut(0.3);
+    currentAction = mixer.clipAction(animations[name]);
+    currentAction.reset().fadeIn(0.3).play();
+}
+
+// 暴露给外部调用
+window.dmAvatarSpeak = function(text) {
+    statusEl.textContent = 'DM 正在说话...';
+    playAnim('stand');
+
+    // 浏览器TTS
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-CN';
+        u.rate = 1.0;
+        u.pitch = 1.0;
+        u.onend = () => {
+            statusEl.textContent = 'DM 在线';
+            playAnim('walk');
+        };
+        u.onerror = () => {
+            statusEl.textContent = 'DM 在线';
+            playAnim('walk');
+        };
+        window.speechSynthesis.speak(u);
+    } else {
+        setTimeout(() => { statusEl.textContent = 'DM 在线'; playAnim('walk'); }, text.length * 200);
+    }
+};
+
+window.dmAvatarThink = function() {
+    statusEl.textContent = 'DM 思考中...';
+    playAnim('walk');
+};
+
+// 初始设置画布大小
+const parent = canvas.parentElement;
+const pw = parent.clientWidth || 320;
+const ph = parent.clientHeight || 240;
+renderer.setSize(pw, ph, false);
+camera.aspect = pw / Math.max(ph, 1);
+camera.updateProjectionMatrix();
+
+// 渲染循环
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = Math.min(0.05, 1/60);
+    if (mixer) mixer.update(delta);
+    const rect = parent.getBoundingClientRect();
+    if (rect.width > 0 && (canvas.width !== Math.floor(rect.width) || canvas.height !== Math.floor(rect.height))) {
+        renderer.setSize(Math.floor(rect.width), Math.floor(rect.height), false);
+        camera.aspect = rect.width / Math.max(rect.height, 1);
+        camera.updateProjectionMatrix();
+    }
+    renderer.render(scene, camera);
+}
+animate();
+
+// 窗口大小变化
+window.addEventListener('resize', () => {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    renderer.setSize(rect.width, rect.height, false);
+    camera.aspect = rect.width / Math.max(rect.height, 1);
+    camera.updateProjectionMatrix();
+});
 </script>
 </body>
 </html>
