@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
  * 字符编码过滤器
  * 确保所有请求和响应都使用 UTF-8 编码
  */
-@Component
+@Component("customEncodingFilter")
 @WebFilter("/*")
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CharacterEncodingFilter implements Filter {

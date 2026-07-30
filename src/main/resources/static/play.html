@@ -2091,25 +2091,30 @@ loader.load('/models/dm_avatar.glb', (gltf) => {
     // 模型保持原位，直接放入场景
     scene.add(model);
 
-    // 相机：拉远 + 抬高视线，确保头和脚都在画面内
+    // 相机：下方仰视，凸显模型气势
     const maxDim = Math.max(size.x, size.y, size.z);
-    const dist = maxDim * 4.5;
-    camera.position.set(0, box.min.y + size.y * 2.25, center.z + dist * 1.5);
-    camera.lookAt(center.x, box.min.y + size.y * 0.55, center.z);
+    const dist = maxDim * 3;
+    const camY = box.min.y + size.y * 1.7;
+    camera.position.set(0, camY, center.z + dist);
+    camera.lookAt(center.x, camY, center.z);
 
-    // 灯光加强 — 确保模型不黑
-    const intensity = maxDim * 15;
-    keyLight.intensity = intensity;
-    keyLight.position.set(dist, dist, dist);
-    fillLight.intensity = intensity * 0.3;
+    // 灯光：适中亮度，避免过曝
+    keyLight.intensity = 1.5;
+    keyLight.position.set(dist * 0.5, dist, dist * 0.5);
+    fillLight.intensity = 0.4;
 
     // 注册动画
     mixer = new THREE.AnimationMixer(model);
     gltf.animations.forEach(clip => {
         const name = clip.name.replace(/\.\d+$/, '').split('-')[0];
         if (!animations[name]) animations[name] = clip;
+        console.log(`[DM] 动画剪辑: ${clip.name} → ${name}, 时长:${clip.duration.toFixed(1)}s, 轨道:${clip.tracks.length}`);
+        clip.tracks.slice(0, 3).forEach(t => console.log(`  骨骼: ${t.name.split('.')[0]}`));
     });
     console.log('[DM] 模型加载完成，动画:', Object.keys(animations));
+
+    // 打印模型骨骼
+    model.traverse(obj => { if (obj.isBone) console.log('[DM] 骨骼:', obj.name); });
 
     // 播放待机（walk-think）
     playAnim('walk');
@@ -2121,10 +2126,11 @@ loader.load('/models/dm_avatar.glb', (gltf) => {
 });
 
 function playAnim(name) {
-    if (!mixer || !animations[name]) return;
+    if (!mixer || !animations[name]) { console.warn('[DM] playAnim 失败:', name, 'mixer:', !!mixer, 'clip:', !!animations[name]); return; }
+    console.log('[DM] 切换动画:', name);
     if (currentAction) currentAction.fadeOut(0.3);
     currentAction = mixer.clipAction(animations[name]);
-    currentAction.reset().fadeIn(0.3).play();
+    currentAction.reset().fadeIn(0.3).setLoop(THREE.LoopRepeat).play();
 }
 
 // 暴露给外部调用
@@ -2166,11 +2172,20 @@ renderer.setSize(pw, ph, false);
 camera.aspect = pw / Math.max(ph, 1);
 camera.updateProjectionMatrix();
 
-// 渲染循环
+// 渲染循环 - 用 Clock 获取真实帧间隔
+const clock = new THREE.Clock();
+let idleTime = 0;
 function animate() {
     requestAnimationFrame(animate);
-    const delta = Math.min(0.05, 1/60);
+    const delta = Math.min(clock.getDelta(), 0.1);
     if (mixer) mixer.update(delta);
+
+    // 待机微动：整体轻轻左右晃
+    if (model && (!currentAction || !currentAction.isRunning())) {
+        idleTime += delta;
+        model.rotation.y = Math.sin(idleTime * 0.8) * 0.03;
+    }
+
     const rect = parent.getBoundingClientRect();
     if (rect.width > 0 && (canvas.width !== Math.floor(rect.width) || canvas.height !== Math.floor(rect.height))) {
         renderer.setSize(Math.floor(rect.width), Math.floor(rect.height), false);
