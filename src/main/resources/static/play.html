@@ -2069,7 +2069,8 @@ const fillLight = new THREE.DirectionalLight(0xffccaa, 0.4);
 fillLight.position.set(-0.3, 0.5, -0.2);
 scene.add(fillLight);
 
-let model, mixer, animations = {}, currentAction;
+let model;
+let leftUpperArm, rightUpperArm, leftHand, rightHand, headBone;
 
 // Draco 解压器
 const dracoLoader = new DRACOLoader();
@@ -2103,21 +2104,17 @@ loader.load('/models/dm_avatar.glb', (gltf) => {
     keyLight.position.set(dist * 0.5, dist, dist * 0.5);
     fillLight.intensity = 0.4;
 
-    // 注册动画
-    mixer = new THREE.AnimationMixer(model);
-    gltf.animations.forEach(clip => {
-        const name = clip.name.replace(/\.\d+$/, '').split('-')[0];
-        if (!animations[name]) animations[name] = clip;
-        console.log(`[DM] 动画剪辑: ${clip.name} → ${name}, 时长:${clip.duration.toFixed(1)}s, 轨道:${clip.tracks.length}`);
-        clip.tracks.slice(0, 3).forEach(t => console.log(`  骨骼: ${t.name.split('.')[0]}`));
+    // 找到关键骨骼（只取第一套，无后缀的）
+    model.traverse(obj => {
+        if (!obj.isBone) return;
+        const n = obj.name;
+        if (n === 'CC_Base_L_Upperarm' || n === 'CC_Base_L_Forearm') leftUpperArm = obj;
+        if (n === 'CC_Base_R_Upperarm' || n === 'CC_Base_R_Forearm') rightUpperArm = obj;
+        if (n === 'CC_Base_L_Hand') leftHand = obj;
+        if (n === 'CC_Base_R_Hand') rightHand = obj;
+        if (n === 'CC_Base_Head') headBone = obj;
     });
-    console.log('[DM] 模型加载完成，动画:', Object.keys(animations));
-
-    // 打印模型骨骼
-    model.traverse(obj => { if (obj.isBone) console.log('[DM] 骨骼:', obj.name); });
-
-    // 播放待机（walk-think）
-    playAnim('walk');
+    console.log('[DM] 骨骼绑定: 左臂', !!leftUpperArm, '右臂', !!rightUpperArm, '头', !!headBone);
     statusEl.textContent = 'DM 在线';
 
 }, undefined, (err) => {
@@ -2125,18 +2122,13 @@ loader.load('/models/dm_avatar.glb', (gltf) => {
     statusEl.textContent = '模型加载失败';
 });
 
-function playAnim(name) {
-    if (!mixer || !animations[name]) { console.warn('[DM] playAnim 失败:', name, 'mixer:', !!mixer, 'clip:', !!animations[name]); return; }
-    console.log('[DM] 切换动画:', name);
-    if (currentAction) currentAction.fadeOut(0.3);
-    currentAction = mixer.clipAction(animations[name]);
-    currentAction.reset().fadeIn(0.3).setLoop(THREE.LoopRepeat).play();
-}
+// 动画状态：'idle' | 'talking'
+let animState = 'idle';
 
 // 暴露给外部调用
 window.dmAvatarSpeak = function(text) {
     statusEl.textContent = 'DM 正在说话...';
-    playAnim('stand');
+    animState = 'talking';
 
     // 浏览器TTS
     if (window.speechSynthesis) {
@@ -2145,14 +2137,8 @@ window.dmAvatarSpeak = function(text) {
         u.lang = 'zh-CN';
         u.rate = 1.0;
         u.pitch = 1.0;
-        u.onend = () => {
-            statusEl.textContent = 'DM 在线';
-            playAnim('walk');
-        };
-        u.onerror = () => {
-            statusEl.textContent = 'DM 在线';
-            playAnim('walk');
-        };
+        u.onend = () => { statusEl.textContent = 'DM 在线'; animState = 'idle'; };
+        u.onerror = () => { statusEl.textContent = 'DM 在线'; animState = 'idle'; };
         window.speechSynthesis.speak(u);
     } else {
         setTimeout(() => { statusEl.textContent = 'DM 在线'; playAnim('walk'); }, text.length * 200);
@@ -2161,7 +2147,7 @@ window.dmAvatarSpeak = function(text) {
 
 window.dmAvatarThink = function() {
     statusEl.textContent = 'DM 思考中...';
-    playAnim('walk');
+    animState = 'idle';
 };
 
 // 初始设置画布大小
@@ -2172,18 +2158,72 @@ renderer.setSize(pw, ph, false);
 camera.aspect = pw / Math.max(ph, 1);
 camera.updateProjectionMatrix();
 
-// 渲染循环 - 用 Clock 获取真实帧间隔
+// 渲染循环 - 纯代码驱动动画
 const clock = new THREE.Clock();
-let idleTime = 0;
+let animTime = 0;
 function animate() {
     requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.1);
-    if (mixer) mixer.update(delta);
+    animTime += delta;
 
-    // 待机微动：整体轻轻左右晃
-    if (model && (!currentAction || !currentAction.isRunning())) {
-        idleTime += delta;
-        model.rotation.y = Math.sin(idleTime * 0.8) * 0.03;
+    // ===== 动作幅度参数 =====
+    const ARMS_LIFT = 0.8;
+    const ARMS_SPREAD = 0.4;
+    const WRIST_TWIST = 0.4;
+    const HEAD_NOD = 0.5;
+    const HEAD_TURN = 0.18;
+    const BODY_SWAY = 0.3;
+    const SPEED = 0.7;
+
+    // 纯代码动画
+    if (model) {
+        if (animState === 'talking') {
+            model.rotation.y = Math.sin(animTime * 1.8) * BODY_SWAY;
+            model.position.y = Math.sin(animTime * 1.5) * 0.003;
+
+            // ========== 连贯手势动画 ==========
+            const t = animTime * SPEED;
+
+            const phase0 = Math.sin(t);
+            const phase1 = Math.sin(t + 1.2);
+            const phase2 = Math.sin(t * 1.6 + 2.5);
+            const phase3 = Math.cos(t * 0.5);
+            const envelope = Math.max(0, Math.sin(t * 0.5)) * 0.7 + 0.3;
+
+            if (rightUpperArm) {
+                rightUpperArm.rotation.x = -0.15 - ARMS_LIFT * envelope * phase0;
+                rightUpperArm.rotation.z = ARMS_SPREAD * envelope * phase1;
+            }
+            if (leftUpperArm) {
+                leftUpperArm.rotation.x = -0.15 - ARMS_LIFT * envelope * phase1;
+                leftUpperArm.rotation.z = -ARMS_SPREAD * envelope * phase0;
+            }
+            if (rightHand) {
+                rightHand.rotation.z = phase2 * WRIST_TWIST;
+                rightHand.rotation.y = phase3 * WRIST_TWIST * 0.6;
+            }
+            if (leftHand) {
+                leftHand.rotation.z = -phase2 * WRIST_TWIST;
+                leftHand.rotation.y = -phase3 * WRIST_TWIST * 0.6;
+            }
+            if (headBone) {
+                headBone.rotation.x = Math.sin(t * 1.4) * HEAD_NOD + 0.03;
+                headBone.rotation.y = Math.sin(t * 0.9) * HEAD_TURN;
+                headBone.rotation.z = Math.sin(t * 1.2) * HEAD_NOD * 0.5;
+            }
+        } else {
+            // 待机：轻轻呼吸起伏
+            model.rotation.y = Math.sin(animTime * 0.8) * 0.03;
+            model.rotation.x = 0;
+            model.position.y = Math.sin(animTime * 1.2) * 0.002;
+
+            // 手臂平滑归位到自然下垂
+            if (rightUpperArm) { rightUpperArm.rotation.x += (0 - rightUpperArm.rotation.x) * 0.04; rightUpperArm.rotation.z *= 0.94; }
+            if (leftUpperArm) { leftUpperArm.rotation.x += (0 - leftUpperArm.rotation.x) * 0.04; leftUpperArm.rotation.z *= 0.94; }
+            if (headBone) { headBone.rotation.x *= 0.94; headBone.rotation.y *= 0.94; headBone.rotation.z *= 0.94; }
+            if (rightHand) { rightHand.rotation.z *= 0.94; rightHand.rotation.y *= 0.94; }
+            if (leftHand) { leftHand.rotation.z *= 0.94; leftHand.rotation.y *= 0.94; }
+        }
     }
 
     const rect = parent.getBoundingClientRect();
