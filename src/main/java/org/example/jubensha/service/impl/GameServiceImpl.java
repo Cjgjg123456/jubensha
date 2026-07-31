@@ -20,6 +20,7 @@ public class GameServiceImpl implements GameService {
 
     @Autowired private GameMapper gameMapper;
     @Autowired private AiService aiService;
+    @Autowired private VolcanoTtsService volcanoTtsService;
 
     private String getRecentChatContext(Integer gameId) {
         List<Map<String, Object>> recentChats = gameMapper.getRecentGlobalChatRecords(gameId);
@@ -883,9 +884,12 @@ public class GameServiceImpl implements GameService {
         String dmReply = aiService.generateChatReply(msgs);
         gameMapper.insertChatRecord(gameId, progress.getCurrentActId(), 0, dmReply);
 
+        String audioUrl = volcanoTtsService.synthesize(dmReply);
+
         Map<String, Object> res = new HashMap<>();
         res.put("roleName", "🎤 DM 主持人");
         res.put("reply", dmReply);
+        res.put("audioUrl", audioUrl);
         return res;
     }
 
@@ -926,9 +930,12 @@ public class GameServiceImpl implements GameService {
         String dmReply = aiService.generateChatReply(msgs);
         gameMapper.insertChatRecord(gameId, progress.getCurrentActId(), 0, dmReply);
 
+        String audioUrl = volcanoTtsService.synthesize(dmReply);
+
         Map<String, Object> res = new HashMap<>();
         res.put("roleName", "🎤 DM 主持人");
         res.put("reply", dmReply);
+        res.put("audioUrl", audioUrl);
         return res;
     }
 
