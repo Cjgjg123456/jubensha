@@ -17,14 +17,13 @@ import java.util.Map;
 
 @Service
 public class AiServiceImpl implements AiService {
-    // 新增：DeepSeek API 密钥
-    private static final String API_KEY = "sk-ace24dfb825148d3a71344db171744fd";
-    // 新增：DeepSeek API 地址（使用自定义端点）
+
     private static final String API_URL = "https://api.deepseek.com/v1/chat/completions";
-    // 新增：自定义端点 ID（替换为您在 DeepSeek 控制台创建的端点 ID）
     private static final String ENDPOINT_ID = "deepseek-v4-pro";
-    // 新增：RestTemplate 用于发送 HTTP 请求
     private final RestTemplate restTemplate = new RestTemplate();
+
+    @org.springframework.beans.factory.annotation.Value("${deepseek.api-key}")
+    private String apiKey;
     // 新增：生成角色回复（单轮对话）
     @Override
     public String generateRoleReply(String prompt) {
@@ -49,7 +48,7 @@ public class AiServiceImpl implements AiService {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(API_KEY);
+            headers.setBearerAuth(apiKey);
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", ENDPOINT_ID);
