@@ -2069,9 +2069,7 @@ const fillLight = new THREE.DirectionalLight(0xffccaa, 0.4);
 fillLight.position.set(-0.3, 0.5, -0.2);
 scene.add(fillLight);
 
-let model;
-let leftHand, rightHand, headBone;
-let allLeftArms = [], allRightArms = [];
+let model, mixer, currentAction;
 
 // Draco 解压器
 const dracoLoader = new DRACOLoader();
@@ -2081,7 +2079,7 @@ dracoLoader.setDecoderConfig({ type: 'js' });
 // 加载模型
 const loader = new GLTFLoader();
 loader.setDRACOLoader(dracoLoader);
-loader.load('/models/dm_avatar.glb', (gltf) => {
+loader.load('/models/dm_avatar_v2.glb', (gltf) => {
     model = gltf.scene;
 
     // 计算包围盒，自动适配相机
@@ -2095,28 +2093,71 @@ loader.load('/models/dm_avatar.glb', (gltf) => {
 
     // 相机：下方仰视，凸显模型气势
     const maxDim = Math.max(size.x, size.y, size.z);
-    const dist = maxDim * 3;
-    const camY = box.min.y + size.y * 1.7;
+    const dist = maxDim * 3.0;
+    const camY = box.min.y + size.y * 1.4;
     camera.position.set(0, camY, center.z + dist);
     camera.lookAt(center.x, camY, center.z);
 
-    // 灯光：适中亮度，避免过曝
     keyLight.intensity = 1.5;
     keyLight.position.set(dist * 0.5, dist, dist * 0.5);
     fillLight.intensity = 0.4;
 
-    // 找到所有手臂骨骼（所有套的都要，因为不确定哪个是真正蒙皮的）
-    const allLeftArms = []; const allRightArms = []; const allHeads = [];
-    model.traverse(obj => {
-        if (!obj.isBone) return;
-        const n = obj.name;
-        if (/L[_A-Z]*Upperarm|L[_A-Z]*Forearm|L[_A-Z]*Clavicle/.test(n)) allLeftArms.push(obj);
-        if (/R[_A-Z]*Upperarm|R[_A-Z]*Forearm|R[_A-Z]*Clavicle/.test(n)) allRightArms.push(obj);
-        if (n.includes('Head') && !n.includes('Head_')) headBone = obj;
-        if (n.includes('L_Hand') && !n.includes('Hand_')) leftHand = obj;
-        if (n.includes('R_Hand') && !n.includes('Hand_')) rightHand = obj;
+    // 注册骨骼动画
+    mixer = new THREE.AnimationMixer(model);
+    const clips = {};  // 存到模块作用域，playAnim 能访问
+    // 诊断
+    const boneNames = new Set();
+    const allBones = [];
+    model.traverse(obj => { if (obj.isBone) { boneNames.add(obj.name); allBones.push(obj); } });
+    console.log('[DM] 骨骼数:', boneNames.size);
+    // 打印几根代表性骨骼
+    const sample = ['RL_BoneRoot','CC_Base_Hip','CC_Base_Spine01','CC_Base_R_Upperarm','CC_Base_Head'];
+    sample.forEach(s => console.log(`  骨骼 ${s}: ${boneNames.has(s) ? '✓' : '✗'}`));
+
+    gltf.animations.forEach(clip => {
+        const name = clip.name.replace(/\.\d+$/, '').split('-')[0];
+        if (!clips[name] && name !== '0_T') clips[name] = clip;
+        if (name === 'walk') {
+            // 检查前10个轨道覆盖了多少不同骨骼
+            const bones = new Set(clip.tracks.slice(0, 10).map(t => t.name.split('.')[0]));
+            console.log(`[DM] walk 前10轨道覆盖骨骼:`, [...bones].join(', '));
+        }
     });
-    console.log('[DM] 骨骼: 左臂群', allLeftArms.length, '右臂群', allRightArms.length, '头', !!headBone);
+
+    // 测试：整体微转确认模型可渲染
+    model.rotation.y = 0.2;
+    // 检查模型结构：是否有SkinnedMesh
+    let hasSkin = false;
+    model.traverse(obj => {
+        if (obj.isSkinnedMesh) { hasSkin = true; console.log('[DM] 找到SkinnedMesh:', obj.name, '骨骼数:', obj.skeleton?.bones?.length); }
+        if (obj.isMesh && !obj.isSkinnedMesh) console.log('[DM] 普通Mesh(无蒙皮):', obj.name);
+    });
+    if (!hasSkin) console.log('[DM] ❌ 模型没有蒙皮！网格不会跟随骨骼动');
+
+    // 暴露 clips 给 playAnim
+    window._dmClips = clips;
+
+    // 播放待机
+    const walkClip = clips['walk'];
+    if (walkClip) {
+        const action = mixer.clipAction(walkClip);
+        action.loop = THREE.LoopRepeat;
+        action.weight = 1.0;
+        action.play();
+        currentAction = action;
+        // 深度检查动画数据
+    ['walk','stand'].forEach(k => {
+        const c = clips[k];
+        if (!c) return;
+        console.log('[DM] ' + k + ' 轨道数:', c.tracks.length, '时长:', c.duration.toFixed(1) + 's');
+        c.tracks.slice(0, 5).forEach(t => {
+            const vals = t.values;
+            const nonZero = Array.from(vals.slice(0, 20)).some(v => Math.abs(v) > 0.001);
+            console.log('  ' + t.name.split('.')[0] + '.' + t.name.split('.')[1] + ' 前20帧有非零值:' + nonZero + ' 样本:' + Array.from(vals.slice(0,3)).map(v=>v.toFixed(3)).join(','));
+        });
+    });
+    console.log('[DM] 初始动画: walk');
+    }
     statusEl.textContent = 'DM 在线';
 
 }, undefined, (err) => {
@@ -2124,8 +2165,21 @@ loader.load('/models/dm_avatar.glb', (gltf) => {
     statusEl.textContent = '模型加载失败';
 });
 
-// 动画状态：'idle' | 'talking'
-let animState = 'idle';
+function playAnim(name) {
+    if (!mixer || !window._dmClips || !window._dmClips[name]) {
+        console.warn('[DM] playAnim 跳过:', name, 'mixer:', !!mixer, 'clip:', !!window._dmClips?.[name]);
+        return;
+    }
+    console.log('[DM] 切换动画 →', name);
+    if (currentAction) { currentAction.stop(); }
+    const clip = window._dmClips[name];
+    const action = mixer.clipAction(clip);
+    action.loop = THREE.LoopRepeat;
+    action.weight = 1.0;
+    action.time = 0;
+    action.play();
+    currentAction = action;
+}
 
 // 预加载系统语音（voices 异步加载）
 if (window.speechSynthesis) {
@@ -2139,9 +2193,9 @@ if (window.speechSynthesis) {
 // 暴露给外部调用
 window.dmAvatarSpeak = function(text, audioUrl) {
     statusEl.textContent = 'DM 正在说话...';
-    animState = 'talking';
+    playAnim('stand');
 
-    const onDone = () => { statusEl.textContent = 'DM 在线'; animState = 'idle'; };
+    const onDone = () => { statusEl.textContent = 'DM 在线'; playAnim('walk'); };
 
     // 优先使用火山引擎 TTS 音频
     if (audioUrl) {
@@ -2174,7 +2228,7 @@ function speakWithBrowser(text, onDone) {
 
 window.dmAvatarThink = function() {
     statusEl.textContent = 'DM 思考中...';
-    animState = 'idle';
+    playAnim('walk');
 };
 
 // 初始设置画布大小
@@ -2185,67 +2239,19 @@ renderer.setSize(pw, ph, false);
 camera.aspect = pw / Math.max(ph, 1);
 camera.updateProjectionMatrix();
 
-// 渲染循环 - 纯代码驱动动画
+// 渲染循环 - 骨骼动画驱动
 const clock = new THREE.Clock();
-let animTime = 0;
 function animate() {
     requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.1);
-    animTime += delta;
-
-    // ===== 动作幅度参数 =====
-    const ARMS_LIFT = 0.8;
-    const ARMS_SPREAD = 0.4;
-    const WRIST_TWIST = 0.4;
-    const HEAD_NOD = 0.5;
-    const HEAD_TURN = 0.18;
-    const BODY_SWAY = 0.3;
-    const SPEED = 0.7;
-
-    // 纯代码动画
-    if (model) {
-        if (animState === 'talking') {
-            model.rotation.y = Math.sin(animTime * 1.8) * BODY_SWAY;
-            model.position.y = Math.sin(animTime * 1.5) * 0.003;
-
-            // ========== 连贯手势动画 ==========
-            const t = animTime * SPEED;
-
-            const lift = Math.max(0, Math.sin(t * 0.5)) * 0.7 + 0.3;
-
-            allRightArms.forEach(b => {
-                b.rotation.x = -1.5 + Math.sin(t) * ARMS_LIFT * lift;
-                b.rotation.y = Math.sin(t + 1.2) * ARMS_Y_LIFT * lift;
-                b.rotation.z = Math.sin(t * 1.6) * ARMS_Z_TWIST * lift;
-            });
-            allLeftArms.forEach(b => {
-                b.rotation.x = -1.5 + Math.sin(t + 1.2) * ARMS_LIFT * lift;
-                b.rotation.y = Math.sin(t) * ARMS_Y_LIFT * lift * -1;
-                b.rotation.z = Math.sin(t * 1.6) * ARMS_Z_TWIST * lift * -1;
-            });
-
-            if (rightHand) rightHand.rotation.z = Math.sin(t * 1.8) * 0.5;
-            if (leftHand) leftHand.rotation.z = Math.sin(t * 1.8) * 0.5 * -1;
-            if (headBone) {
-                headBone.rotation.x = Math.sin(t * 1.4) * HEAD_NOD + 0.03;
-                headBone.rotation.y = Math.sin(t * 0.9) * 0.18;
-            }
-        } else {
-            // 待机：轻轻呼吸起伏
-            model.rotation.y = Math.sin(animTime * 0.8) * 0.03;
-            model.rotation.x = 0;
-            model.position.y = Math.sin(animTime * 1.2) * 0.002;
-
-            // 手臂平滑归位到自然下垂
-            allRightArms.forEach(b => { b.rotation.x *= 0.93; b.rotation.y *= 0.93; b.rotation.z *= 0.93; });
-            allLeftArms.forEach(b => { b.rotation.x *= 0.93; b.rotation.y *= 0.93; b.rotation.z *= 0.93; });
-            if (headBone) { headBone.rotation.x *= 0.93; headBone.rotation.y *= 0.93; }
-            if (rightHand) rightHand.rotation.z *= 0.93;
-            if (leftHand) leftHand.rotation.z *= 0.93;
-        }
+    if (mixer) mixer.update(delta);
+    // 每2秒打印根骨骼位置看动画是否生效
+    if (model && Math.floor(performance.now() / 2000) !== Math.floor((performance.now() - delta*1000) / 2000)) {
+        let hip = model.getObjectByName('CC_Base_Hip');
+        if (hip) console.log('[DM] Hip pos:', hip.position.x.toFixed(3), hip.position.y.toFixed(3), hip.position.z.toFixed(3), '| rotX:', hip.rotation.x.toFixed(3));
     }
 
-    const rect = parent.getBoundingClientRect();
+    const rect = parent.getBoundingClientRect();;
     if (rect.width > 0 && (canvas.width !== Math.floor(rect.width) || canvas.height !== Math.floor(rect.height))) {
         renderer.setSize(Math.floor(rect.width), Math.floor(rect.height), false);
         camera.aspect = rect.width / Math.max(rect.height, 1);
