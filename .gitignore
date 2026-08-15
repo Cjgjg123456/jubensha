@@ -45,8 +45,8 @@ models/
 uploads/
 jubensha_uploads/
 
-# Database (keep the example one in jubensha/ dir)
-/example_db.sqlite
+# Database
+example_db.sqlite
 *.sqlite-shm
 *.sqlite-wal
 
