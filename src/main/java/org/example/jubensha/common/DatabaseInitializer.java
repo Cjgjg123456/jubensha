@@ -169,9 +169,17 @@ public class DatabaseInitializer {
                 "script_id INTEGER NOT NULL, " +
                 "arch_name VARCHAR(100) NOT NULL, " +
                 "image_url VARCHAR(255), " +
+                "model_url VARCHAR(255), " +
                 "arch_desc TEXT, " +
                 "FOREIGN KEY (script_id) REFERENCES script(script_id) ON DELETE CASCADE" +
             ")");
+
+            // 迁移：旧库的 script_architecture 表补加 model_url 列（新库已含，重复加列会失败并忽略）
+            try {
+                stmt.execute("ALTER TABLE script_architecture ADD COLUMN model_url VARCHAR(255)");
+            } catch (Exception ignored) {
+                // 列已存在则忽略
+            }
 
             // ==================== 游戏运行表 ====================
 

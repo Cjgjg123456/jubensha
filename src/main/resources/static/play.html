@@ -224,16 +224,23 @@
         .btn-hint:hover { background: rgba(255, 153, 0, 0.1); box-shadow: 0 0 10px rgba(255, 153, 0, 0.2); }
         .btn-hint:disabled { border-color: #555; color: #555; cursor: not-allowed; }
 
-        /* 🟢 新增：古建图鉴样式 */
-        .arch-modal .modal-content { width: 900px; max-height: 85vh; border-color: #9b4dff; box-shadow: 0 0 30px rgba(155, 77, 255, 0.3); background: rgba(15, 15, 25, 0.95); }
+        /* 🟢 新增：古建图鉴样式（左右分栏） */
+        .arch-modal .modal-content { width: 1100px; max-width: 92vw; max-height: 88vh; border-color: #9b4dff; box-shadow: 0 0 30px rgba(155, 77, 255, 0.3); background: rgba(15, 15, 25, 0.95); }
         .arch-modal .modal-title { color: #d0a0ff; }
-        .arch-list { display: flex; flex-direction: column; gap: 20px; overflow-y: auto; padding-right: 10px; max-height: 60vh; }
-        .arch-item { display: flex; gap: 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(155, 77, 255, 0.2); border-radius: 12px; padding: 15px; }
-        .arch-img-box { width: 220px; flex-shrink: 0; }
-        .arch-img { width: 100%; height: 160px; object-fit: cover; border-radius: 8px; border: 2px solid #5b12ff; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        .arch-info { flex: 1; display: flex; flex-direction: column; }
-        .arch-title { font-size: 20px; font-weight: bold; color: #e0c3fc; margin-bottom: 10px; border-bottom: 1px solid rgba(155,77,255,0.3); padding-bottom: 5px; }
-        .arch-desc { font-size: 14px; color: #ccc; line-height: 1.8; text-align: justify; overflow-y: auto; flex: 1; }
+        .arch-split { display: flex; gap: 18px; height: 66vh; min-height: 420px; }
+        .arch-list { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-right: 8px; }
+        .arch-item { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(155, 77, 255, 0.2); border-radius: 10px; padding: 10px; cursor: pointer; transition: 0.2s; }
+        .arch-item:hover { background: rgba(155,77,255,0.1); border-color: rgba(155,77,255,0.45); }
+        .arch-item.active { border-color: #00e5ff; background: rgba(0,229,255,0.08); box-shadow: 0 0 12px rgba(0,229,255,0.25); }
+        .arch-item-thumb { width: 54px; height: 54px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid #5b12ff; }
+        .arch-item-name { font-size: 14px; color: #e0c3fc; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .arch-item-3d { font-size: 11px; color: #00e5ff; border: 1px solid rgba(0,229,255,0.4); border-radius: 4px; padding: 1px 6px; flex-shrink: 0; }
+        .arch-viewer { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; position: relative; }
+        #arch-3d-canvas { width: 100%; flex: 1; min-height: 0; border-radius: 12px; border: 1px solid rgba(155,77,255,0.3); background: radial-gradient(ellipse at center, rgba(0,229,255,0.04) 0%, transparent 70%); display: block; }
+        .arch-viewer-info { padding: 0 4px; }
+        .arch-viewer-title { font-size: 20px; font-weight: bold; color: #e0c3fc; margin-bottom: 8px; border-bottom: 1px solid rgba(155,77,255,0.3); padding-bottom: 5px; }
+        .arch-viewer-desc { font-size: 14px; color: #ccc; line-height: 1.8; text-align: justify; overflow-y: auto; max-height: 120px; }
+        .arch-viewer-hint { position: absolute; top: 10px; right: 14px; font-size: 11px; color: rgba(255,255,255,0.5); background: rgba(0,0,0,0.45); padding: 4px 10px; border-radius: 6px; pointer-events: none; z-index: 2; }
         
         /* 最后一幕指认凶手按钮脉冲动画 */
         @keyframes pulse {
@@ -421,7 +428,16 @@
             <div class="modal-title">🏛️ 古建百科图鉴</div>
             <button class="close-btn" onclick="closeArchModal()">×</button>
         </div>
-        <div class="arch-list" id="archList">
+        <div class="arch-split">
+            <div class="arch-list" id="archList"></div>
+            <div class="arch-viewer">
+                <canvas id="arch-3d-canvas"></canvas>
+                <div class="arch-viewer-hint">🖱️ 左键旋转 · 滚轮缩放 · 右键平移</div>
+                <div class="arch-viewer-info">
+                    <div class="arch-viewer-title" id="archViewerTitle">选择左侧古建查看详情</div>
+                    <div class="arch-viewer-desc" id="archViewerDesc"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1379,30 +1395,50 @@
         }
     }
 
-    // 🟢 新增：古建图鉴弹窗逻辑
+    // 🟢 新增：古建图鉴弹窗逻辑（左右分栏）
     function openArchModal() {
         const container = document.getElementById('archList');
         container.innerHTML = '';
 
-        scriptArchitectures.forEach(arch => {
-            const safeDesc = (arch.archDesc || '暂无介绍').replace(/\n/g, '<br>');
+        scriptArchitectures.forEach((arch, i) => {
             const div = document.createElement('div');
             div.className = 'arch-item';
             div.innerHTML = `
-                <div class="arch-img-box">
-                    <img src="${arch.imageUrl || 'https://placehold.co/300/111/9b4dff?text=暂无配图'}" class="arch-img" alt="${arch.archName}">
-                </div>
-                <div class="arch-info">
-                    <div class="arch-title">${arch.archName}</div>
-                    <div class="arch-desc">${safeDesc}</div>
-                </div>
+                <img src="${arch.imageUrl || 'https://placehold.co/54/222/9b4dff?text=古建'}" class="arch-item-thumb" alt="${arch.archName}">
+                <div class="arch-item-name">${arch.archName || '未命名'}</div>
+                ${arch.modelUrl ? '<div class="arch-item-3d">3D</div>' : ''}
             `;
+            div.onclick = () => selectArch(i);
             container.appendChild(div);
         });
 
         document.getElementById('archModal').style.display = 'flex';
+
+        if (scriptArchitectures.length > 0) {
+            selectArch(0);
+        } else {
+            document.getElementById('archViewerTitle').textContent = '暂无古建数据';
+            document.getElementById('archViewerDesc').textContent = '';
+        }
     }
-    function closeArchModal() { document.getElementById('archModal').style.display = 'none'; }
+
+    function selectArch(index) {
+        const arch = scriptArchitectures[index];
+        if (!arch) return;
+        document.querySelectorAll('.arch-item').forEach((el, i) => el.classList.toggle('active', i === index));
+        document.getElementById('archViewerTitle').textContent = arch.archName || '未命名';
+        document.getElementById('archViewerDesc').innerHTML = (arch.archDesc || '暂无介绍').replace(/\n/g, '<br>');
+        if (arch.modelUrl && window.archViewer) {
+            window.archViewer.load(arch.modelUrl);
+        } else if (window.archViewer) {
+            window.archViewer.clear();
+        }
+    }
+
+    function closeArchModal() {
+        document.getElementById('archModal').style.display = 'none';
+        if (window.archViewer) window.archViewer.dispose();
+    }
 
 
     async function openClueModal() {
@@ -2047,6 +2083,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const canvas = document.getElementById('dm-canvas');
 const statusEl = document.getElementById('dm-status');
@@ -2268,6 +2305,82 @@ window.addEventListener('resize', () => {
     camera.aspect = rect.width / Math.max(rect.height, 1);
     camera.updateProjectionMatrix();
 });
+
+// ==================== 古建 3D 查看器（独立渲染器，复用 Draco 解压器） ====================
+const archCanvas = document.getElementById('arch-3d-canvas');
+const archRenderer = new THREE.WebGLRenderer({ canvas: archCanvas, alpha: true, antialias: true });
+archRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const archScene = new THREE.Scene();
+archScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const archKeyLight = new THREE.DirectionalLight(0xffffff, 1.6);
+archKeyLight.position.set(2, 3, 2);
+archScene.add(archKeyLight);
+archScene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.6));
+
+const archCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+const archControls = new OrbitControls(archCamera, archCanvas);
+archControls.enableDamping = true;
+archControls.dampingFactor = 0.08;
+archControls.autoRotate = true;
+archControls.autoRotateSpeed = 1.5;
+archControls.target.set(0, 0, 0);
+
+let archModel = null;
+let archRaf = null;
+
+const archLoader = new GLTFLoader();
+archLoader.setDRACOLoader(dracoLoader);
+
+function archFitCamera(obj) {
+    const box = new THREE.Box3().setFromObject(obj);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const dist = maxDim * 2.5;
+    archCamera.position.set(center.x + dist * 0.6, center.y + dist * 0.5, center.z + dist);
+    archCamera.near = maxDim / 100;
+    archCamera.far = maxDim * 20;
+    archCamera.updateProjectionMatrix();
+    archControls.target.copy(center);
+    archControls.minDistance = maxDim * 0.5;
+    archControls.maxDistance = maxDim * 6;
+    archControls.update();
+}
+
+function archRenderLoop() {
+    archRaf = requestAnimationFrame(archRenderLoop);
+    const cw = archCanvas.clientWidth, ch = archCanvas.clientHeight;
+    if (cw > 0 && ch > 0 && (archCanvas.width !== cw || archCanvas.height !== ch)) {
+        archRenderer.setSize(cw, ch, false);
+        archCamera.aspect = cw / Math.max(ch, 1);
+        archCamera.updateProjectionMatrix();
+    }
+    archControls.update();
+    archRenderer.render(archScene, archCamera);
+}
+
+window.archViewer = {
+    load(url) {
+        if (archModel) { archScene.remove(archModel); archModel = null; }
+        archLoader.load(url, (gltf) => {
+            archModel = gltf.scene;
+            archScene.add(archModel);
+            archFitCamera(archModel);
+            archControls.autoRotate = true;
+            if (!archRaf) archRenderLoop();
+        }, undefined, (err) => {
+            console.error('[古建] 3D 模型加载失败:', err);
+        });
+    },
+    clear() {
+        if (archModel) { archScene.remove(archModel); archModel = null; }
+    },
+    dispose() {
+        if (archRaf) { cancelAnimationFrame(archRaf); archRaf = null; }
+        if (archModel) { archScene.remove(archModel); archModel = null; }
+    }
+};
 </script>
 </body>
 </html>

@@ -273,6 +273,7 @@ public class GameServiceImpl implements GameService {
                 arch.setScriptId(scriptId);
                 arch.setArchName((String) a.get("archName"));
                 arch.setImageUrl((String) a.get("imageUrl"));
+                arch.setModelUrl((String) a.get("modelUrl"));
                 arch.setArchDesc((String) a.get("archDesc"));
                 gameMapper.insertArchitecture(arch);
             }

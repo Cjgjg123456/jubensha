@@ -41,8 +41,15 @@ public class GameController {
     @PostMapping("/upload")
     public Result<String> upload(@RequestParam("file") MultipartFile file) {
         try {
+            if (file == null || file.isEmpty()) {
+                return Result.fail("文件为空");
+            }
             String originalFilename = file.getOriginalFilename();
-            String ext = originalFilename != null && originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".jpg";
+            String ext = originalFilename != null && originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase() : ".jpg";
+            // 白名单校验：仅允许图片和 3D 模型（GLB/GLTF）
+            if (!Set.of(".jpg", ".jpeg", ".png", ".webp", ".gif", ".glb", ".gltf").contains(ext)) {
+                return Result.fail("不支持的文件类型：" + ext);
+            }
             String fileName = "media_" + UUID.randomUUID().toString().replace("-", "") + ext;
             File dir = new File(uploadPath);
             if (!dir.exists()) dir.mkdirs();

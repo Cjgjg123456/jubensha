@@ -310,7 +310,7 @@
 
     // ================== 古建图鉴配置逻辑 ==================
     function addArch() {
-        architectures.push({ archName: "", imageUrl: "", archDesc: "" });
+        architectures.push({ archName: "", imageUrl: "", modelUrl: "", archDesc: "" });
         renderArch();
     }
 
@@ -323,6 +323,18 @@
                 architectures[index].imageUrl = res.data;
                 renderArch();
             } else alert("上传失败：" + res.msg);
+        }
+    }
+
+    async function uploadArchModel(input, index) {
+        if(input.files[0]) {
+            const formData = new FormData();
+            formData.append("file", input.files[0]);
+            const res = await fetch('/api/game/upload', { method: 'POST', body: formData }).then(r => r.json());
+            if(res.success) {
+                architectures[index].modelUrl = res.data;
+                renderArch();
+            } else alert("3D模型上传失败：" + res.msg);
         }
     }
 
@@ -349,6 +361,11 @@
                             <button class="btn" style="color:red;" onclick="architectures.splice(${i},1); renderArch();">删除</button>
                         </div>
                         <textarea class="form-input" style="flex:1; border-color:rgba(0,229,255,0.3); resize:none;" oninput="architectures[${i}].archDesc=this.value;" placeholder="填写该古建的详细科普介绍...">${a.archDesc}</textarea>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <button class="btn" style="background:rgba(0,229,255,0.1); color:#00e5ff; border:1px solid rgba(0,229,255,0.3);" onclick="document.getElementById('archModel_${i}').click()">${a.modelUrl ? '🔄 更换3D模型' : '📦 上传3D模型(GLB)'}</button>
+                            <input type="file" id="archModel_${i}" hidden accept=".glb,.gltf" onchange="uploadArchModel(this, ${i})">
+                            <span style="color:${a.modelUrl ? '#00e5ff' : '#666'}; font-size:12px;">${a.modelUrl ? '✅ 3D模型已上传' : '未上传（可选）'}</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -612,6 +629,7 @@
                     architectures = d.architectures.map(a => ({
                         archName: a.archName,
                         imageUrl: a.imageUrl || "",
+                        modelUrl: a.modelUrl || "",
                         archDesc: a.archDesc || ""
                     }));
                     renderArch();

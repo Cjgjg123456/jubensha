@@ -253,7 +253,7 @@ public interface GameMapper {
     @Select("SELECT * FROM script_architecture WHERE script_id = #{scriptId}")
     List<ScriptArchitecture> getArchitecturesByScriptId(Integer scriptId);
 
-    @Insert("INSERT INTO script_architecture (script_id, arch_name, image_url, arch_desc) VALUES (#{scriptId}, #{archName}, #{imageUrl}, #{archDesc})")
+    @Insert("INSERT INTO script_architecture (script_id, arch_name, image_url, model_url, arch_desc) VALUES (#{scriptId}, #{archName}, #{imageUrl}, #{modelUrl}, #{archDesc})")
     void insertArchitecture(ScriptArchitecture arch);
 
     @Delete("DELETE FROM script_architecture WHERE script_id = #{scriptId}")
