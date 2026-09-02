@@ -86,6 +86,8 @@
 
         /* 左侧：角色信息栏 */
         .role-sidebar { width: 260px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; padding: 20px; align-items: center; }
+        .role-sidebar .side-toggle { top: 12px; right: 12px; }
+        .role-sidebar .game-status { margin-top: 12px; }
         .game-status { width: 100%; text-align: center; background: rgba(255,102,0,0.1); border: 1px solid #ff6600; color: #ff9900; padding: 8px; border-radius: 8px; font-weight: bold; margin-bottom: 25px; letter-spacing: 1px; }
         .role-avatar { width: 120px; height: 120px; border-radius: 50%; border: 3px solid #b89758; margin-bottom: 15px; object-fit: cover; box-shadow: 0 0 20px rgba(184, 151, 88, 0.3); }
         .role-name { font-size: 24px; font-weight: bold; color: #fff; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
@@ -116,7 +118,9 @@
 
         /* 右侧：聊天频道 */
         .chat-sidebar { width: 320px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; overflow: hidden; }
-        .chat-header { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 16px; font-weight: bold; text-align: center; }
+        .chat-sidebar .side-toggle { position: static; margin-left: auto; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
+        .chat-header { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 15px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .chat-title-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .btn-dm-summon { width: 100%; background: linear-gradient(90deg, #8E2DE2, #4A00E0); color: #fff; border: none; padding: 12px; cursor: pointer; font-size: 13px; font-weight: bold; box-shadow: 0 4px 10px rgba(142, 45, 226, 0.3); transition: 0.3s; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .btn-dm-summon:hover { box-shadow: 0 6px 15px rgba(142, 45, 226, 0.6); background: linear-gradient(90deg, #9b4dff, #5b12ff); }
@@ -248,6 +252,115 @@
             70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(255, 51, 0, 0); }
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 51, 0, 0); }
         }
+
+        /* ==========================================================
+           界面美化：侧栏折叠抽屉 / 弹窗动画 / 按压反馈 / 微滚动条
+           ========================================================== */
+
+        /* —— 全局按压反馈 —— */
+        button { -webkit-tap-highlight-color: transparent; }
+        button:active:not(:disabled) { transform: scale(0.96) !important; }
+        .clue-btn, .vote-btn, .btn-ready, .btn-dm-summon, .btn-voice, .btn-investigate, .btn-hint,
+        .act-selector, .close-btn, .btn, .arch-item, .clue-card, .log-item, .msg-bubble { transition: all 0.25s ease; }
+
+        /* —— 统一细滚动条 —— */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.32); }
+
+        /* —— 侧栏折叠 —— */
+        .role-sidebar, .chat-sidebar {
+            position: relative;
+            transition: width 0.45s cubic-bezier(0.33, 0.8, 0.2, 1), padding 0.45s cubic-bezier(0.33, 0.8, 0.2, 1);
+            overflow: hidden;
+        }
+        /* 折叠后收成一条窄栏（56px），内部内容隐藏 */
+        .role-sidebar.side-collapsed, .chat-sidebar.side-collapsed { width: 56px !important; padding: 12px 6px; min-width: 0; }
+        .side-collapsed > * { opacity: 0 !important; pointer-events: none; }
+        .side-collapsed > .side-fab { opacity: 1 !important; pointer-events: auto; }
+
+        /* 展开把手（浮在窄栏中央） */
+        .side-fab {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+            width: 38px; height: 38px; border-radius: 50%;
+            background: linear-gradient(135deg, rgba(184,151,88,0.9), rgba(140,110,60,0.95));
+            border: 1px solid #d4b475; color: #fff; font-size: 16px; cursor: pointer;
+            display: none; align-items: center; justify-content: center;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.45), 0 0 12px rgba(212,180,117,0.25);
+            z-index: 30; transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s;
+        }
+        .side-fab:hover { transform: translate(-50%, -50%) scale(1.05); background: linear-gradient(135deg, #d4b475, #b89758); }
+        .side-fab .fab-tip {
+            position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%);
+            font-size: 10px; color: rgba(255,255,255,0.85); white-space: nowrap; width: max-content;
+        }
+        .role-sidebar.side-collapsed .side-fab, .chat-sidebar.side-collapsed .side-fab { display: flex; }
+
+        /* 折叠开关按钮（栏头右上角，未折叠时可见） */
+        .side-toggle {
+            position: absolute; top: 8px; right: 8px; z-index: 20;
+            width: 26px; height: 26px; border-radius: 8px;
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
+            color: #ccc; font-size: 11px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: all 0.3s;
+        }
+        .side-toggle:hover { background: rgba(255,255,255,0.16); color: #fff; border-color: rgba(255,255,255,0.35); }
+        .side-collapsed > .side-toggle { display: none; }
+        .role-sidebar { min-width: 0; }
+        .chat-sidebar { min-width: 0; }
+
+        /* —— 弹窗开启动画 —— */
+        .modal-overlay { animation: overlayFade 0.25s ease; }
+        .modal-overlay .modal-content { animation: modalPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes overlayFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.88) translateY(16px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* —— 剧本内容分段卡片（公共 / 机密可折叠） —— */
+        .story-block { margin-bottom: 18px; border-radius: 12px; overflow: hidden; border: 1px solid; }
+        .story-block .story-head {
+            display: flex; align-items: center; gap: 8px; padding: 12px 16px; cursor: pointer;
+            font-size: 15px; font-weight: bold; user-select: none;
+        }
+        .story-block .story-head .story-arrow { margin-left: auto; font-size: 12px; transition: transform 0.3s ease; opacity: 0.7; }
+        .story-block.closed .story-head .story-arrow { transform: rotate(-90deg); }
+        .story-block .story-body { padding: 6px 18px 16px; font-size: 15px; line-height: 2; text-align: justify; }
+        .story-block .story-body div { animation: bodyFade 0.4s ease; }
+        @keyframes bodyFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        .story-block.pub { background: rgba(255,153,0,0.07); border-color: rgba(255,153,0,0.28); }
+        .story-block.pub .story-head { color: #ffb74d; background: rgba(255,153,0,0.1); }
+        .story-block.priv { background: rgba(0,229,255,0.06); border-color: rgba(0,229,255,0.25); }
+        .story-block.priv .story-head { color: #4dd0e1; background: rgba(0,229,255,0.1); }
+
+        /* —— 剧本阅读纸张微调 —— */
+        .script-paper { box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 0 60px rgba(255,255,255,0.015); }
+
+        /* —— 聊天消息进场与悬停 —— */
+        .msg-item, .msg-dm, .msg-sys { animation: msgIn 0.3s ease; }
+        @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        .msg-bubble { box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+        .msg-item:hover .msg-bubble { filter: brightness(1.12); }
+        .voice-message { box-shadow: 0 1px 6px rgba(0,0,0,0.3); }
+        .voice-message:hover { border-color: rgba(255,102,0,0.6); background: rgba(255,102,0,0.12); }
+
+        /* —— 按钮悬停微光 —— */
+        .clue-btn, .btn-ready { position: relative; overflow: hidden; }
+        .clue-btn::after, .btn-ready::after, .btn-dm-summon::after {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+            transition: left 0.5s ease;
+        }
+        .clue-btn:hover::after, .btn-ready:hover::after, .btn-dm-summon:hover::after { left: 100%; }
+
+        /* —— DM 面板角落状态微调 —— */
+        #dm-status { text-shadow: 0 0 6px rgba(0,0,0,0.8); }
+
+        /* —— 主内容区进入动画（页面加载完去 opacity） —— */
+        .container { opacity: 0; animation: containerIn 0.6s ease 0.15s forwards; }
+        @keyframes containerIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
     </style>
 </head>
 <body>
@@ -262,7 +375,11 @@
     </div>
     
     <div class="container">
-    <div class="role-sidebar">
+    <div class="role-sidebar" id="roleSidebar">
+        <button class="side-toggle" onclick="toggleSidePanel('roleSidebar')" title="收起角色档案栏">❮</button>
+        <button class="side-fab" onclick="toggleSidePanel('roleSidebar')" title="展开角色档案栏">
+            🎭<span class="fab-tip">角色</span>
+        </button>
         <div class="game-status">✦ 阶段：阅读剧本 ✦</div>
         <img id="roleAvatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23b89758'/%3E%3Ctext x='50' y='58' text-anchor='middle' font-size='30' fill='white'%3E🎭%3C/text%3E%3C/svg%3E" class="role-avatar">
         <div class="role-name" id="roleName">加载中...</div>
@@ -308,8 +425,14 @@
         </div>
     </div>
 
-    <div class="chat-sidebar">
-        <div class="chat-header" id="chatTitle">全息公屏 (AI沉浸中)</div>
+    <div class="chat-sidebar" id="chatSidebar">
+        <button class="side-fab" onclick="toggleSidePanel('chatSidebar')" title="展开聊天频道">
+            💬<span class="fab-tip">聊天</span>
+        </button>
+        <div class="chat-header" id="chatTitle">
+            <span class="chat-title-text">全息公屏 (AI沉浸中)</span>
+            <button class="side-toggle" onclick="toggleSidePanel('chatSidebar')" title="收起聊天频道">❮</button>
+        </div>
 
         <div id="dm-avatar-panel" style="width:100%; height:240px; background:radial-gradient(ellipse at center, rgba(0,229,255,0.05) 0%, transparent 70%); position:relative; overflow:hidden; border-bottom:1px solid rgba(255,255,255,0.05);">
             <canvas id="dm-canvas" style="width:100%;height:100%;"></canvas>
@@ -1133,23 +1256,41 @@
         let pubHtml = '';
         if (contentData.publicContent && String(contentData.publicContent).trim() !== 'null' && String(contentData.publicContent).trim() !== '') {
             let safePub = String(contentData.publicContent).replace(/\n/g, '<br>');
-            pubHtml = `<div style="margin-bottom:30px; padding:20px; background:rgba(255,153,0,0.1); border-radius:8px; border:1px solid rgba(255,153,0,0.3);">
-                            <h4 style="color:#ff9900; margin-bottom:10px;">📜 公共故事背景</h4>
-                            <div style="font-size:15px; line-height:1.8; color:#eee;">${safePub}</div>
+            pubHtml = `<div class="story-block pub" id="storyPub">
+                            <div class="story-head" onclick="toggleStoryBlock(this)">
+                                📜 公共故事背景 <span class="story-arrow">▾</span>
+                            </div>
+                            <div class="story-body">${safePub}</div>
                        </div>`;
         }
 
         let privHtml = '';
         if (contentData.privateContent && String(contentData.privateContent).trim() !== 'null' && String(contentData.privateContent).trim() !== '') {
             let safePriv = String(contentData.privateContent).replace(/\n/g, '<br>');
-            privHtml = `<div>
-                            <h4 style="color:#00e5ff; margin-bottom:10px;">🤫 您的专属机密剧情</h4>
-                            <div style="font-size:15px; line-height:1.8; color:#ddd;">${safePriv}</div>
+            privHtml = `<div class="story-block priv" id="storyPriv">
+                            <div class="story-head" onclick="toggleStoryBlock(this)">
+                                🤫 您的专属机密剧情 <span class="story-arrow">▾</span>
+                            </div>
+                            <div class="story-body">${safePriv}</div>
                        </div>`;
         }
 
         document.getElementById('scriptText').innerHTML = (pubHtml + privHtml) || '<p style="text-align:center; color:#aaa; margin-top: 50px;">本幕暂无剧情内容，请直接查阅线索或讨论。</p>';
     }
+
+    // ✅ 折叠/展开故事分块
+    window.toggleStoryBlock = function(headEl) {
+        const block = headEl.closest('.story-block');
+        if (!block) return;
+        block.classList.toggle('closed');
+        const body = block.querySelector('.story-body');
+        if (!body) return;
+        if (block.classList.contains('closed')) {
+            body.style.display = 'none';
+        } else {
+            body.style.display = '';
+        }
+    };
 
     window.onload = async function() {
         // ⚡ 性能优化：检查是否已经初始化过，避免重复初始化
@@ -1666,6 +1807,19 @@
     }
 
     function goToHall() { window.location.href = 'room.html'; }
+
+    // ✅ 侧栏折叠/展开（角色档案栏 / 聊天频道栏）
+    window.toggleSidePanel = function(sidebarId) {
+        const el = document.getElementById(sidebarId);
+        if (!el) return;
+        el.classList.toggle('side-collapsed');
+        // 折叠动画结束后让 DM 画布重新适配尺寸（chat侧栏）
+        setTimeout(() => {
+            if (sidebarId === 'chatSidebar' && window.dispatchEvent) {
+                window.dispatchEvent(new Event('resize'));
+            }
+        }, 500);
+    };
 
     function receiveSysMessage(name, text) {
         const chatBox = document.getElementById('chatBox');
