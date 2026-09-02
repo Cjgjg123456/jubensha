@@ -34,27 +34,29 @@
         .ai-fab:hover { transform: scale(1.1) rotate(8deg); box-shadow: 0 10px 30px rgba(74,0,224,0.65); }
         .ai-fab .fab-label { position:absolute; right:70px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:5px 10px; border-radius:8px; white-space:nowrap; opacity:0; pointer-events:none; transition:.3s; }
         .ai-fab:hover .fab-label { opacity:1; }
-        .ai-modal .modal-content { width: 760px; max-width: 92vw; max-height: 86vh; border-color: #9b4dff; box-shadow: 0 0 40px rgba(155,77,255,0.3); background: rgba(18,18,32,0.97); }
+        .ai-modal .modal-content { width: 760px; max-width: 92vw; max-height: 86vh; border-color: #9b4dff; box-shadow: 0 0 40px rgba(155,77,255,0.3); background: rgba(18,18,32,0.97); display:flex; flex-direction:column; overflow:hidden; }
+        .ai-modal .modal-header { flex-shrink: 0; }
         .ai-modal .modal-title { color: #d0a0ff; }
         .ai-target-chip { display:inline-flex; align-items:center; gap:6px; background:rgba(155,77,255,.15); color:#e0c3fc; border:1px solid rgba(155,77,255,.4);
-            padding:4px 12px; border-radius:20px; font-size:13px; margin-bottom:14px; }
-        .ai-task-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+            padding:4px 12px; border-radius:20px; font-size:13px; margin-bottom:14px; flex-shrink:0; }
+        .ai-task-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; flex-shrink:0; }
         .ai-task-btn { background:rgba(255,255,255,.05); color:#bbb; border:1px solid rgba(255,255,255,.12); padding:8px 16px; border-radius:20px; cursor:pointer; font-size:13px; transition:.25s; }
         .ai-task-btn:hover { border-color:#9b4dff; color:#fff; }
         .ai-task-btn.active { background:linear-gradient(135deg, #8E2DE2, #4A00E0); color:#fff; border-color:transparent; box-shadow:0 2px 10px rgba(142,45,226,.35); }
-        .ai-instruct { width:100%; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12); color:#fff; padding:10px 14px; border-radius:10px; outline:none; font-size:14px; resize:vertical; min-height:44px; margin-bottom:12px; }
+        .ai-instruct { width:100%; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12); color:#fff; padding:10px 14px; border-radius:10px; outline:none; font-size:14px; resize:vertical; min-height:44px; margin-bottom:12px; flex-shrink:0; }
         .ai-instruct:focus { border-color:#9b4dff; }
-        .ai-actions { display:flex; gap:10px; align-items:center; margin-bottom:14px; }
+        .ai-actions { display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-shrink:0; }
         .btn-ai-gen { background:linear-gradient(135deg,#8E2DE2,#4A00E0); color:#fff; border:none; padding:10px 22px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:15px; transition:.25s; }
         .btn-ai-gen:hover { box-shadow:0 0 16px rgba(142,45,226,.5); transform:translateY(-1px); }
         .btn-ai-gen:disabled { background:#555; cursor:not-allowed; box-shadow:none; transform:none; }
         .ai-hint { color:#999; font-size:12px; }
-        .ai-output-wrap { border:1px solid rgba(155,77,255,.3); border-radius:12px; overflow:hidden; background:rgba(0,0,0,.25); display:none; }
-        .ai-output-head { display:flex; justify-content:space-between; align-items:center; padding:8px 14px; background:rgba(155,77,255,.12); font-size:12px; color:#d0a0ff; }
-        .ai-output { min-height:180px; max-height:300px; overflow-y:auto; padding:14px; color:#eee; font-size:14px; line-height:1.9; white-space:pre-wrap; }
+        /* 输出区：占满剩余高度并自行滚动，底部"写入"按钮始终可见可点 */
+        .ai-output-wrap { border:1px solid rgba(155,77,255,.3); border-radius:12px; overflow:hidden; background:rgba(0,0,0,.25); display:none; flex:1 1 auto; min-height:0; flex-direction:column; }
+        .ai-output-head { display:flex; justify-content:space-between; align-items:center; padding:8px 14px; background:rgba(155,77,255,.12); font-size:12px; color:#d0a0ff; flex-shrink:0; }
+        .ai-output { flex:1 1 auto; min-height:0; overflow-y:auto; padding:14px; color:#eee; font-size:14px; line-height:1.9; white-space:pre-wrap; }
         .ai-output .caret { display:inline-block; width:8px; height:16px; background:#9b4dff; vertical-align:-2px; animation:caretBlink .8s steps(1) infinite; }
         @keyframes caretBlink { 50% { opacity:0; } }
-        .ai-apply-row { display:flex; gap:10px; flex-wrap:wrap; padding:12px 14px; border-top:1px solid rgba(255,255,255,.08); }
+        .ai-apply-row { display:flex; gap:10px; flex-wrap:wrap; padding:12px 14px; border-top:1px solid rgba(255,255,255,.08); flex-shrink:0; }
         .btn-ai-apply { padding:8px 16px; border-radius:8px; border:1px solid rgba(155,77,255,.5); background:transparent; color:#d0a0ff; cursor:pointer; font-size:13px; transition:.25s; }
         .btn-ai-apply:hover { background:rgba(155,77,255,.15); }
         .btn-ai-apply.primary { background:linear-gradient(90deg,#8E2DE2,#4A00E0); color:#fff; border:none; }
@@ -191,8 +193,11 @@
 
         <div class="ai-output-wrap" id="aiOutputWrap">
             <div class="ai-output-head">
-                <span>📝 AI 创作结果（可手动修改后采纳）</span>
-                <button class="btn-ai-apply" style="border:none; background:none; color:#9b4dff; font-size:12px;" onclick="copyAiResult()">📋 复制</button>
+                <span>📝 AI 创作结果</span>
+                <span style="display:flex; gap:10px;">
+                    <button type="button" class="btn-ai-apply" style="border:none; background:none; color:#9b4dff; font-size:12px;" onclick="showAiFullText()">⏩ 立即显示全文</button>
+                    <button type="button" class="btn-ai-apply" style="border:none; background:none; color:#9b4dff; font-size:12px;" onclick="copyAiResult()">📋 复制</button>
+                </span>
             </div>
             <div class="ai-output" id="aiOutput"></div>
             <div class="ai-apply-row" id="aiApplyRow">
@@ -265,6 +270,18 @@
     let aiTypingTimer = null;
     const DRAFT_KEY = 'jubensha_creator_draft_v1';
 
+    // —— HTML 安全转义：AI 文本/用户文本回显到 input/textarea 前必须转义 ——
+    function escAttr(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/'/g, '&#39;');
+    }
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     // —— 打开助手（fab 全局 / ✨ 段落级按钮共用）——
     function openAiWriter() {
         document.getElementById('aiWriterModal').style.display = 'flex';
@@ -274,13 +291,14 @@
     function closeAiWriter() { document.getElementById('aiWriterModal').style.display = 'none'; stopAiTyping(); }
 
     function resetAiPanel() {
+        stopAiTyping();
         aiState = { task: 'continue', targetType: null, roleIdx: -1, actIdx: -1 };
-        document.getElementById('aiTaskHint') || null;
         document.querySelectorAll('.ai-task-btn').forEach(b => b.classList.toggle('active', b.dataset.task === 'continue'));
         document.getElementById('aiInstruction').value = '';
         document.getElementById('aiTargetChip').innerText = '🎯 目标：整份剧本（通读后用建议/自定义）';
         document.getElementById('aiOutputWrap').style.display = 'none';
         document.getElementById('aiOutput').innerText = '';
+        aiResultText = '';
         document.getElementById('aiGenBtn').disabled = false;
         document.getElementById('aiGenHint').innerText = '助手会先通读剧本再创作，约需 10~30 秒';
     }
@@ -306,9 +324,13 @@
     function setAiTask(btn, task) {
         document.querySelectorAll('.ai-task-btn').forEach(b => b.classList.toggle('active', b.dataset.task === task));
         aiState.task = task;
-        // 某些任务需要目标在"当前幕"，若无目标则自动指向公共剧情当前幕
-        if ((task === 'rolesView' || task === 'clues') && aiState.targetType === null) {
-            aiState.targetType = 'pub'; aiState.roleIdx = -1; aiState.actIdx = currentViewActIdx();
+        // 全体角色视角 / 线索卡：基于"公共场景 + 幕次"工作（与单个角色无关），
+        // 保留当前目标幕 actIdx（若从某幕 ✨ 进入），否则默认公共第 1 幕
+        if (task === 'rolesView' || task === 'clues') {
+            const keepAct = (aiState.targetType === 'pub' || aiState.targetType === 'role') && aiState.actIdx >= 0;
+            aiState.targetType = 'pub';
+            aiState.roleIdx = -1;
+            if (!keepAct) aiState.actIdx = 0;
             document.getElementById('aiTargetChip').innerText = '🎯 目标：公共剧情 · 第' + (aiState.actIdx + 1) + '幕';
         }
     }
@@ -355,7 +377,8 @@
         const hint = document.getElementById('aiGenHint');
         btn.disabled = true;
         stopAiTyping();
-        document.getElementById('aiOutputWrap').style.display = 'block';
+        const wrap = document.getElementById('aiOutputWrap');
+        wrap.style.display = 'flex';           // 输出区需 flex 布局占满剩余空间
         document.getElementById('aiOutput').innerHTML = '<span class="ai-thinking"></span> AI 正在通读剧本与设定，构思中…';
         hint.innerText = '创作中，请稍候（续写/润色约 10~20s，全体视角/线索约 20~40s）';
 
@@ -385,26 +408,43 @@
         }
     }
 
-    // —— 打字机效果 ——
-    function typewriterEffect(elId, text, speed = 18) {
+    // —— 打字机效果（按文本长度自适应速度，总时长约 8~15 秒；自动滚底）——
+    function typewriterEffect(elId, text) {
         const el = document.getElementById(elId);
         el.innerHTML = '';
+        if (!text) return;
+        // 长文本加快速度，短文本保持阅读感：目标总时长 clamp(8s, 16s)
+        const totalMs = Math.max(8000, Math.min(16000, text.length * 4));
+        const speed = Math.max(1, Math.floor(totalMs / text.length));
         let i = 0;
         const caret = document.createElement('span'); caret.className = 'caret';
+        el.appendChild(caret);
+        const scrollToBottom = () => { el.scrollTop = el.scrollHeight; };
         function tick() {
             if (i < text.length) {
                 const chunk = text.slice(i, i + 1);
                 el.insertBefore(document.createTextNode(chunk), caret);
                 i++;
+                if (i % 8 === 0) scrollToBottom();
                 aiTypingTimer = setTimeout(tick, speed);
             } else {
                 if (caret.parentNode) caret.parentNode.removeChild(caret);
+                scrollToBottom();
             }
         }
-        el.appendChild(caret);
         tick();
     }
     function stopAiTyping() { if (aiTypingTimer) { clearTimeout(aiTypingTimer); aiTypingTimer = null; } }
+
+    // —— ⏩ 立即显示全文（跳过打字动画）——
+    function showAiFullText() {
+        stopAiTyping();
+        const el = document.getElementById('aiOutput');
+        const t = aiResultText || '';
+        el.innerHTML = '';
+        el.textContent = t;
+        el.scrollTop = el.scrollHeight;
+    }
 
     function getAiResultPlain() {
         // 打字机未完成时取完整结果文本
@@ -441,13 +481,15 @@
     // —— 采纳：追加 ——
     function applyAiAppend() {
         const t = getAiResultPlain(); if (!t) return;
-        if (writeAiToTarget(t, true)) { closeAiWriter(); saveDraftSoon(); alert('✅ 已追加到剧本'); }
+        stopAiTyping();
+        if (writeAiToTarget(t, true)) { closeAiWriter(); scheduleDraftSave(); alert('✅ 已追加到剧本'); }
     }
     // —— 采纳：替换 ——
     function applyAiReplace() {
         const t = getAiResultPlain(); if (!t) return;
+        stopAiTyping();
         if (confirm('将用 AI 内容替换目标整段，原内容会丢失。是否继续？')) {
-            if (writeAiToTarget(t, false)) { closeAiWriter(); saveDraftSoon(); alert('✅ 已替换目标文本'); }
+            if (writeAiToTarget(t, false)) { closeAiWriter(); scheduleDraftSave(); alert('✅ 已替换目标文本'); }
         }
     }
     // —— 写入目标 ——
@@ -516,7 +558,7 @@
                 }
             }
         });
-        if (written > 0) { render(); closeAiWriter(); saveDraftSoon(); alert('✅ 已为 ' + written + ' 位角色写入第' + ((aiState.actIdx >= 0 ? aiState.actIdx : 0) + 1) + '幕视角'); }
+        if (written > 0) { render(); closeAiWriter(); scheduleDraftSave(); alert('✅ 已为 ' + written + ' 位角色写入第' + ((aiState.actIdx >= 0 ? aiState.actIdx : 0) + 1) + '幕视角'); }
         else alert('未能匹配到任何角色名。请确认角色名与 AI 输出一致，或手动复制采纳。');
     }
 
@@ -539,7 +581,7 @@
             clues.push({ name: name.trim(), desc: content, actIndex: actIdx >= 0 ? actIdx : 0, isPublic: isPublic, roleIndex: aiState.roleIdx >= 0 ? aiState.roleIdx : -1, isHidden: 0, unlockCondition: '', sceneImageUrl: '' });
             added++;
         });
-        if (added > 0) { render(); closeAiWriter(); saveDraftSoon(); alert('✅ 已添加 ' + added + ' 条线索卡，请检查归属与解锁条件'); }
+        if (added > 0) { render(); closeAiWriter(); scheduleDraftSave(); alert('✅ 已添加 ' + added + ' 条线索卡，请检查归属与解锁条件'); }
         else alert('解析失败，请手动录入。');
     }
 
@@ -739,15 +781,15 @@
             div.innerHTML = `
                 <div style="display:flex; gap:15px;">
                     <div style="width:120px; text-align:center; flex-shrink:0;">
-                        <img src="${a.imageUrl || 'https://placehold.co/120/222/00e5ff?text=上传古建图'}" style="width:100%; height:120px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #00e5ff;" onclick="document.getElementById('archImg_${i}').click()" title="点击上传实景图/结构图">
+                        <img src="${escAttr(a.imageUrl || 'https://placehold.co/120/222/00e5ff?text=上传古建图')}" style="width:100%; height:120px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #00e5ff;" onclick="document.getElementById('archImg_${i}').click()" title="点击上传实景图/结构图">
                         <input type="file" id="archImg_${i}" hidden accept="image/*" onchange="uploadArchImg(this, ${i})">
                     </div>
                     <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
                         <div style="display:flex; gap:10px; align-items:center;">
-                            <input class="form-input" style="flex:1; border-color:rgba(0,229,255,0.3);" value="${a.archName}" oninput="architectures[${i}].archName=this.value;" placeholder="建筑名称 (如：应县木塔、榫卯结构)">
+                            <input class="form-input" style="flex:1; border-color:rgba(0,229,255,0.3);" value="${escAttr(a.archName)}" oninput="architectures[${i}].archName=this.value;" placeholder="建筑名称 (如：应县木塔、榫卯结构)">
                             <button class="btn" style="color:red;" onclick="architectures.splice(${i},1); renderArch();">删除</button>
                         </div>
-                        <textarea class="form-input" style="flex:1; border-color:rgba(0,229,255,0.3); resize:none;" oninput="architectures[${i}].archDesc=this.value;" placeholder="填写该古建的详细科普介绍...">${a.archDesc}</textarea>
+                        <textarea class="form-input" style="flex:1; border-color:rgba(0,229,255,0.3); resize:none;" oninput="architectures[${i}].archDesc=this.value;" placeholder="填写该古建的详细科普介绍...">${escHtml(a.archDesc)}</textarea>
                         <div style="display:flex; gap:10px; align-items:center;">
                             <button class="btn" style="background:rgba(0,229,255,0.1); color:#00e5ff; border:1px solid rgba(0,229,255,0.3);" onclick="document.getElementById('archModel_${i}').click()">${a.modelUrl ? '🔄 更换3D模型' : '📦 上传3D模型(GLB)'}</button>
                             <input type="file" id="archModel_${i}" hidden accept=".glb,.gltf" onchange="uploadArchModel(this, ${i})">
@@ -770,23 +812,23 @@
 
         div.innerHTML = `
             <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
-                <input class="form-input" style="flex:1" value="${c.name}" oninput="clues[${i}].name=this.value;" placeholder="线索名称(如: 带血的匕首)">
-                <select class="form-select" style="width:110px;" onchange="clues[${i}].actIndex=parseInt(this.value);">${acts.map((a,idx)=>`<option value="${idx}" ${c.actIndex==idx?'selected':''}>${a}</option>`).join('')}</select>
+                <input class="form-input" style="flex:1" value="${escAttr(c.name)}" oninput="clues[${i}].name=this.value;" placeholder="线索名称(如: 带血的匕首)">
+                <select class="form-select" style="width:110px;" onchange="clues[${i}].actIndex=parseInt(this.value);">${acts.map((a,idx)=>`<option value="${idx}" ${c.actIndex==idx?'selected':''}>${escHtml(a)}</option>`).join('')}</select>
                 <select class="form-select" style="width:90px;" onchange="clues[${i}].isPublic=parseInt(this.value); render();"><option value="1" ${c.isPublic==1?'selected':''}>公共</option><option value="0" ${c.isPublic==0?'selected':''}>私密</option></select>
                 <select class="form-select" style="width:110px; color:${c.isHidden==1?'#ff9900':'#fff'}; font-weight:bold;" onchange="clues[${i}].isHidden=parseInt(this.value); render();"><option value="0" ${c.isHidden==0?'selected':''}>直接发放</option><option value="1" ${c.isHidden==1?'selected':''}>需搜证</option></select>
                 <button class="btn" style="color:red" onclick="clues.splice(${i},1); render();">删</button>
             </div>
-            <textarea class="form-input" style="margin-bottom:10px;" oninput="clues[${i}].desc=this.value;" placeholder="线索的具体文字描述内容">${c.desc}</textarea>
+            <textarea class="form-input" style="margin-bottom:10px;" oninput="clues[${i}].desc=this.value;" placeholder="线索的具体文字描述内容">${escHtml(c.desc)}</textarea>
 
             ${c.isHidden == 1 ? `
             <div style="background:rgba(255,102,0,0.1); border:1px dashed #ff6600; padding:15px; border-radius:8px; display:flex; gap:15px;">
                 <div style="flex:1;">
                     <label style="color:#ff9900; font-size:12px; font-weight:bold;">🔍 AI 搜证触发条件 (自然语言)</label>
-                    <input class="form-input" style="margin-top:5px; border-color:rgba(255,102,0,0.5);" value="${c.unlockCondition||''}" oninput="clues[${i}].unlockCondition=this.value;" placeholder="例如：玩家检查床底、翻找垃圾桶">
+                    <input class="form-input" style="margin-top:5px; border-color:rgba(255,102,0,0.5);" value="${escAttr(c.unlockCondition||'')}" oninput="clues[${i}].unlockCondition=this.value;" placeholder="例如：玩家检查床底、翻找垃圾桶">
                 </div>
                 <div style="width:100px; text-align:center;">
                     <label style="color:#ff9900; font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">📸 案发现场图</label>
-                    <img src="${c.sceneImageUrl || 'https://placehold.co/60/222/ff6600?text=传图'}" style="width:60px; height:60px; object-fit:cover; border-radius:5px; cursor:pointer; border:1px solid #ff6600;" onclick="document.getElementById('clueImg_${i}').click()" title="点击上传现场图">
+                    <img src="${escAttr(c.sceneImageUrl || 'https://placehold.co/60/222/ff6600?text=传图')}" style="width:60px; height:60px; object-fit:cover; border-radius:5px; cursor:pointer; border:1px solid #ff6600;" onclick="document.getElementById('clueImg_${i}').click()" title="点击上传现场图">
                     <input type="file" id="clueImg_${i}" hidden accept="image/*" onchange="uploadClueImg(this, ${i})">
                 </div>
             </div>
@@ -891,8 +933,8 @@
             acts.forEach((a, i) => {
                 pubHtml += `
                     <div style="margin-bottom:15px;">
-                        <label style="color:#ff9900; font-weight:bold;">${a}<button type="button" class="ai-mini" title="AI 续写/润色/建议这段公共剧情" onclick="bindAiTarget('pub', -1, ${i}, '公共剧情 · ${a}')">✨ AI</button></label>
-                        <textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="例如：1991年，一场大火烧毁了疗养院..." oninput="actsPublicContent[${i}]=this.value; scheduleDraftSave();">${actsPublicContent[i]||''}</textarea>
+                        <label style="color:#ff9900; font-weight:bold;">${escHtml(a)}<button type="button" class="ai-mini" title="AI 续写/润色/建议这段公共剧情" onclick="bindAiTarget('pub', -1, ${i}, '公共剧情 · 第${i+1}幕')">✨ AI</button></label>
+                        <textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="例如：1991年，一场大火烧毁了疗养院..." oninput="actsPublicContent[${i}]=this.value; scheduleDraftSave();">${escHtml(actsPublicContent[i]||'')}</textarea>
                     </div>
                 `;
             });
@@ -907,9 +949,9 @@
                         <img id="roleAvatarPreview" src="${avatarDisplay}" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid #ff6600; box-shadow: 0 0 10px rgba(255,102,0,0.2);">
                         <input type="file" id="roleAvatarInput" hidden accept="image/*" onchange="handleRoleAvatar(this)">
                     </div>
-                    <input class="form-input" style="flex:1" value="${cur.name}" oninput="roles[${currentRoleIdx}].name=this.value; updateNavName(); scheduleDraftSave();" placeholder="角色名称">
+                    <input class="form-input" style="flex:1" value="${escAttr(cur.name)}" oninput="roles[${currentRoleIdx}].name=this.value; updateNavName(); scheduleDraftSave();" placeholder="角色名称">
                     <div style="flex:2; position:relative;">
-                        <input class="form-input" style="width:100%; padding-right:56px;" value="${cur.intro}" oninput="roles[${currentRoleIdx}].intro=this.value; scheduleDraftSave();" placeholder="公开人设 (例如: 男 35岁 | 现私家侦探)">
+                        <input class="form-input" style="width:100%; padding-right:56px;" value="${escAttr(cur.intro)}" oninput="roles[${currentRoleIdx}].intro=this.value; scheduleDraftSave();" placeholder="公开人设 (例如: 男 35岁 | 现私家侦探)">
                         <button type="button" class="ai-mini" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); height:28px; line-height:1;" title="AI 帮你完善公开人设" onclick="bindAiTarget('roleIntro', ${currentRoleIdx}, -1, null)">✨ AI</button>
                     </div>
                 </div>
@@ -917,7 +959,7 @@
                     <h4 style="color:#00e5ff; margin-bottom:5px;">🤫 角色专属机密剧情</h4>
                     <p style="font-size:13px; color:#aaa;">在此填写该角色在每一幕中的独立视角、记忆或隐藏线索。只有选择该角色的玩家可见。</p>
                 </div>
-                ${acts.map((a, i) => `<div style="margin-bottom:15px;"><label style="color:#00e5ff; font-weight:bold;">${a}<button type="button" class="ai-mini" style="border-color:rgba(0,229,255,0.4); color:#4dd0e1;" title="AI 续写/润色这段角色专属剧情" onclick="bindAiTarget('role', ${currentRoleIdx}, ${i}, null)">✨ AI</button></label><textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="填写该角色的专属机密剧情..." oninput="roles[${currentRoleIdx}].actsContent[${i}]=this.value; scheduleDraftSave();">${cur.actsContent[i]||''}</textarea></div>`).join('')}
+                ${acts.map((a, i) => `<div style="margin-bottom:15px;"><label style="color:#00e5ff; font-weight:bold;">${escHtml(a)}<button type="button" class="ai-mini" style="border-color:rgba(0,229,255,0.4); color:#4dd0e1;" title="AI 续写/润色这段角色专属剧情" onclick="bindAiTarget('role', ${currentRoleIdx}, ${i}, null)">✨ AI</button></label><textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="填写该角色的专属机密剧情..." oninput="roles[${currentRoleIdx}].actsContent[${i}]=this.value; scheduleDraftSave();">${escHtml(cur.actsContent[i]||'')}</textarea></div>`).join('')}
                 <div id="clueContainer"></div><button class="btn" style="width:100%; background:transparent; border:1px dashed #666; color:#aaa" onclick="addClue()">+ 添加线索卡</button>
             `;
             clues.forEach((c, i) => { if(c.isPublic == 1 || c.roleIndex == currentRoleIdx) renderClue(c, i); });
@@ -938,16 +980,16 @@
             div.style.borderLeftColor = '#e53935';
             div.innerHTML = `
                 <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
-                    <input class="form-input" style="flex:2" value="${e.title}" placeholder="结局名称 (如: 尘埃落定)" oninput="endings[${i}].title=this.value; scheduleDraftSave();">
+                    <input class="form-input" style="flex:2" value="${escAttr(e.title)}" placeholder="结局名称 (如: 尘埃落定)" oninput="endings[${i}].title=this.value; scheduleDraftSave();">
                     <select class="form-select" onchange="endings[${i}].votedRoleIndex=parseInt(this.value);">
                         <option value="-1" ${e.votedRoleIndex === -1 ? 'selected' : ''}>[默认] 投错真凶时触发</option>
                         <option value="-2" ${e.votedRoleIndex === -2 ? 'selected' : ''}>[默认] 放弃投票时触发</option>
-                        ${roles.map((r, rIdx) => `<option value="${rIdx}" ${e.votedRoleIndex === rIdx ? 'selected' : ''}>当玩家投给: ${r.name}</option>`).join('')}
+                        ${roles.map((r, rIdx) => `<option value="${rIdx}" ${e.votedRoleIndex === rIdx ? 'selected' : ''}>当玩家投给: ${escHtml(r.name)}</option>`).join('')}
                     </select>
                     <button class="btn" style="color:red" onclick="endings.splice(${i},1); renderEndings();">删</button>
                 </div>
                 <div style="display:flex; align-items:flex-start; gap:8px;">
-                    <textarea class="form-input" style="height:80px;" placeholder="玩家触发此结局后看到的剧情描述..." oninput="endings[${i}].content=this.value; scheduleDraftSave();">${e.content}</textarea>
+                    <textarea class="form-input" style="height:80px;" placeholder="玩家触发此结局后看到的剧情描述..." oninput="endings[${i}].content=this.value; scheduleDraftSave();">${escHtml(e.content)}</textarea>
                     <button type="button" class="ai-mini" style="height:40px; align-self:center;" title="AI 续写/润色这个结局" onclick="bindAiTarget('ending', ${i}, -1, null)">✨ AI</button>
                 </div>
             `;
@@ -1017,7 +1059,15 @@
         if (d.bgmUrl) { currentBgmUrl = d.bgmUrl; const b = document.getElementById('scriptBgmDisplay'); if (b) b.value = '✅ 音乐已就绪'; }
         if (d.acts) acts = d.acts;
         if (d.actsPublicContent) actsPublicContent = d.actsPublicContent;
-        if (d.roles) roles = d.roles;
+        if (d.roles) {
+            // 补齐角色缺失字段（旧草稿可能没有 actsContent/intro）
+            roles = d.roles.map(r => ({
+                name: r.name || '待定角色',
+                avatar: r.avatar || '',
+                intro: r.intro || '',
+                actsContent: (r.actsContent && r.actsContent.length === acts.length) ? r.actsContent : acts.map(() => '')
+            }));
+        }
         if (d.clues) clues = d.clues;
         if (d.endings) endings = d.endings;
         if (d.architectures) architectures = d.architectures;
