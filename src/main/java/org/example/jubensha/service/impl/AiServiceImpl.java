@@ -3,6 +3,7 @@ package org.example.jubensha.service.impl;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import org.example.jubensha.service.AiService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -22,8 +23,9 @@ public class AiServiceImpl implements AiService {
     private static final String ENDPOINT_ID = "deepseek-v4-pro";
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @org.springframework.beans.factory.annotation.Value("${deepseek.api-key}")
+    @Value("${deepseek.api-key}")
     private String apiKey;
+
     // 新增：生成角色回复（单轮对话）
     @Override
     public String generateRoleReply(String prompt) {
@@ -41,10 +43,15 @@ public class AiServiceImpl implements AiService {
         return generateChatReply(messages); // 复用新方法
     }
 
-    // 新增：处理真正的多轮聊天
+    // 新增：处理真正的多轮聊天（默认 1500 tokens）
     @Override
     public String generateChatReply(List<Map<String, String>> messages) {
-        // 新增：构建请求体
+        return generateChatReply(messages, 1500);
+    }
+
+    // 新增：处理真正的多轮聊天（自定义 maxTokens，创作助手用）
+    @Override
+    public String generateChatReply(List<Map<String, String>> messages, int maxTokens) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -52,8 +59,8 @@ public class AiServiceImpl implements AiService {
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", ENDPOINT_ID);
-            requestBody.put("temperature", 0.7);
-            requestBody.put("max_tokens", 1500);
+            requestBody.put("temperature", 0.8);
+            requestBody.put("max_tokens", maxTokens > 0 ? maxTokens : 1500);
 
             // 将拼装好的历史消息（包含 system, user, assistant）直接传给大模型
             requestBody.put("messages", messages);
@@ -66,7 +73,7 @@ public class AiServiceImpl implements AiService {
             }
 
             JSONObject jsonObject = JSON.parseObject(response.getBody());
-            
+
             if (!jsonObject.containsKey("choices") || jsonObject.getJSONArray("choices").isEmpty()) {
                 throw new RuntimeException("AI服务返回格式异常");
             }

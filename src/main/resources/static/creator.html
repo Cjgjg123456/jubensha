@@ -26,6 +26,58 @@
         .modal-title { font-size: 20px; font-weight: bold; color: #00e5ff; }
         .close-btn { background: none; border: none; color: #aaa; font-size: 28px; cursor: pointer; transition: 0.3s; line-height: 1; }
         .close-btn:hover { color: #fff; }
+
+        /* ====== 🤖 AI 剧本创作助手 ====== */
+        .ai-fab { position: fixed; right: 30px; bottom: 30px; z-index: 900; width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer;
+            background: linear-gradient(135deg, #8E2DE2, #4A00E0); color:#fff; font-size: 26px; display:flex; align-items:center; justify-content:center;
+            box-shadow: 0 8px 24px rgba(74,0,224,0.45); transition: all .3s cubic-bezier(.175,.885,.32,1.275); }
+        .ai-fab:hover { transform: scale(1.1) rotate(8deg); box-shadow: 0 10px 30px rgba(74,0,224,0.65); }
+        .ai-fab .fab-label { position:absolute; right:70px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:5px 10px; border-radius:8px; white-space:nowrap; opacity:0; pointer-events:none; transition:.3s; }
+        .ai-fab:hover .fab-label { opacity:1; }
+        .ai-modal .modal-content { width: 760px; max-width: 92vw; max-height: 86vh; border-color: #9b4dff; box-shadow: 0 0 40px rgba(155,77,255,0.3); background: rgba(18,18,32,0.97); }
+        .ai-modal .modal-title { color: #d0a0ff; }
+        .ai-target-chip { display:inline-flex; align-items:center; gap:6px; background:rgba(155,77,255,.15); color:#e0c3fc; border:1px solid rgba(155,77,255,.4);
+            padding:4px 12px; border-radius:20px; font-size:13px; margin-bottom:14px; }
+        .ai-task-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+        .ai-task-btn { background:rgba(255,255,255,.05); color:#bbb; border:1px solid rgba(255,255,255,.12); padding:8px 16px; border-radius:20px; cursor:pointer; font-size:13px; transition:.25s; }
+        .ai-task-btn:hover { border-color:#9b4dff; color:#fff; }
+        .ai-task-btn.active { background:linear-gradient(135deg, #8E2DE2, #4A00E0); color:#fff; border-color:transparent; box-shadow:0 2px 10px rgba(142,45,226,.35); }
+        .ai-instruct { width:100%; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12); color:#fff; padding:10px 14px; border-radius:10px; outline:none; font-size:14px; resize:vertical; min-height:44px; margin-bottom:12px; }
+        .ai-instruct:focus { border-color:#9b4dff; }
+        .ai-actions { display:flex; gap:10px; align-items:center; margin-bottom:14px; }
+        .btn-ai-gen { background:linear-gradient(135deg,#8E2DE2,#4A00E0); color:#fff; border:none; padding:10px 22px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:15px; transition:.25s; }
+        .btn-ai-gen:hover { box-shadow:0 0 16px rgba(142,45,226,.5); transform:translateY(-1px); }
+        .btn-ai-gen:disabled { background:#555; cursor:not-allowed; box-shadow:none; transform:none; }
+        .ai-hint { color:#999; font-size:12px; }
+        .ai-output-wrap { border:1px solid rgba(155,77,255,.3); border-radius:12px; overflow:hidden; background:rgba(0,0,0,.25); display:none; }
+        .ai-output-head { display:flex; justify-content:space-between; align-items:center; padding:8px 14px; background:rgba(155,77,255,.12); font-size:12px; color:#d0a0ff; }
+        .ai-output { min-height:180px; max-height:300px; overflow-y:auto; padding:14px; color:#eee; font-size:14px; line-height:1.9; white-space:pre-wrap; }
+        .ai-output .caret { display:inline-block; width:8px; height:16px; background:#9b4dff; vertical-align:-2px; animation:caretBlink .8s steps(1) infinite; }
+        @keyframes caretBlink { 50% { opacity:0; } }
+        .ai-apply-row { display:flex; gap:10px; flex-wrap:wrap; padding:12px 14px; border-top:1px solid rgba(255,255,255,.08); }
+        .btn-ai-apply { padding:8px 16px; border-radius:8px; border:1px solid rgba(155,77,255,.5); background:transparent; color:#d0a0ff; cursor:pointer; font-size:13px; transition:.25s; }
+        .btn-ai-apply:hover { background:rgba(155,77,255,.15); }
+        .btn-ai-apply.primary { background:linear-gradient(90deg,#8E2DE2,#4A00E0); color:#fff; border:none; }
+        .btn-ai-apply.primary:hover { box-shadow:0 0 12px rgba(142,45,226,.4); }
+        .btn-ai-apply:disabled { opacity:.4; cursor:not-allowed; }
+
+        /* ✨ 段落级 AI 按钮 */
+        .ai-mini { background:transparent; border:1px solid rgba(155,77,255,.35); color:#c084fc; border-radius:8px; cursor:pointer;
+            font-size:13px; padding:2px 8px; margin-left:8px; transition:.25s; vertical-align:middle; }
+        .ai-mini:hover { background:rgba(155,77,255,.15); border-color:#9b4dff; transform:scale(1.05); }
+
+        /* 打字机生成中的旋转星 */
+        .ai-thinking { display:inline-block; width:16px; height:16px; border:2px solid rgba(155,77,255,.3); border-top-color:#9b4dff; border-radius:50%; animation:spinAi .8s linear infinite; vertical-align:-3px; margin-right:8px; }
+        @keyframes spinAi { to { transform:rotate(360deg); } }
+
+        .btn-ai-warning { background:rgba(255,152,0,.15); border:1px solid rgba(255,152,0,.4); color:#ffb74d; }
+
+        /* ====== 草稿恢复横幅 ====== */
+        .draft-banner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 950; background: rgba(30,30,55,.96); border:1px solid #9b4dff;
+            color:#eee; padding: 12px 20px; border-radius: 14px; font-size: 14px; display: flex; gap: 16px; align-items: center; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+        .draft-banner button { border:none; padding:6px 14px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:13px; }
+        .draft-banner .ok { background:linear-gradient(90deg,#8E2DE2,#4A00E0); color:#fff; }
+        .draft-banner .no { background:rgba(255,255,255,.12); color:#ccc; }
     </style>
 </head>
 <body>
@@ -74,7 +126,7 @@
                     </div>
                 </div>
 
-                <div style="grid-column: span 4;"><label>简介</label><textarea id="scriptIntro" class="form-input" style="height:60px;"></textarea></div>
+                <div style="grid-column: span 4;"><label>简介<button type="button" class="ai-mini" title="AI 帮你写/润色剧本简介" onclick="bindAiTarget('intro', -1, -1, '剧本简介')">✨ AI</button></label><textarea id="scriptIntro" class="form-input" style="height:60px;" oninput="scheduleDraftSave();"></textarea></div>
             </div>
         </div>
     </div>
@@ -87,8 +139,8 @@
     <div class="form-section">
         <div class="section-title">3. 结局与复盘设定</div>
         <div style="margin-bottom: 20px;">
-            <label style="color:#00e5ff; font-weight:bold;">📜 剧本真相复盘 (玩家游戏结束后强制展示)</label>
-            <textarea id="scriptTruth" class="form-input" style="height: 120px; margin-top:10px;" placeholder="请在这里写下整个故事的来龙去脉、凶手的作案手法等详细复盘内容..."></textarea>
+            <label style="color:#00e5ff; font-weight:bold;">📜 剧本真相复盘 (玩家游戏结束后强制展示)<button type="button" class="ai-mini" style="border-color:rgba(0,229,255,0.4); color:#4dd0e1;" title="AI 帮你梳理复盘/真相" onclick="bindAiTarget('truth', -1, -1, '真相复盘')">✨ AI</button></label>
+            <textarea id="scriptTruth" class="form-input" style="height: 120px; margin-top:10px;" placeholder="请在这里写下整个故事的来龙去脉、凶手的作案手法等详细复盘内容..." oninput="scheduleDraftSave();"></textarea>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; margin-top:30px;">
@@ -107,6 +159,57 @@
     </div>
 
     <button class="btn btn-primary" onclick="submitScript()">🚀 确认并全网发布</button>
+</div>
+
+<!-- 🤖 AI 剧本创作助手：浮动按钮 -->
+<button class="ai-fab" id="aiFab" onclick="openAiWriter()" title="AI 剧本创作助手">🤖<span class="fab-label">AI 创作助手</span></button>
+
+<!-- 🤖 AI 助手主面板 -->
+<div class="modal-overlay ai-modal" id="aiWriterModal" style="z-index: 1100;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-title">🤖 AI 剧本创作助手</div>
+            <button class="close-btn" onclick="closeAiWriter()">×</button>
+        </div>
+        <div class="ai-target-chip" id="aiTargetChip">🎯 目标：未选择（将基于整份剧本工作）</div>
+
+        <div class="ai-task-row">
+            <button class="ai-task-btn active" data-task="continue" onclick="setAiTask(this,'continue')">✍️ 续写</button>
+            <button class="ai-task-btn" data-task="polish" onclick="setAiTask(this,'polish')">✨ 润色重写</button>
+            <button class="ai-task-btn" data-task="suggest" onclick="setAiTask(this,'suggest')">🧠 逻辑建议</button>
+            <button class="ai-task-btn" data-task="rolesView" onclick="setAiTask(this,'rolesView')">🎭 全体角色视角</button>
+            <button class="ai-task-btn" data-task="clues" onclick="setAiTask(this,'clues')">🔍 线索卡建议</button>
+            <button class="ai-task-btn" data-task="custom" onclick="setAiTask(this,'custom')">💬 自定义</button>
+        </div>
+
+        <textarea id="aiInstruction" class="ai-instruct" placeholder="补充你的创作要求（可选）。例：凶手是老二，我希望玩家在第三幕能通过账本发现破绽；或：语气再阴森一点…"></textarea>
+
+        <div class="ai-actions">
+            <button class="btn-ai-gen" id="aiGenBtn" onclick="runAiWriter()">⚡ 让 AI 创作</button>
+            <span class="ai-hint" id="aiGenHint">助手会先通读剧本再创作，约需 10~30 秒</span>
+        </div>
+
+        <div class="ai-output-wrap" id="aiOutputWrap">
+            <div class="ai-output-head">
+                <span>📝 AI 创作结果（可手动修改后采纳）</span>
+                <button class="btn-ai-apply" style="border:none; background:none; color:#9b4dff; font-size:12px;" onclick="copyAiResult()">📋 复制</button>
+            </div>
+            <div class="ai-output" id="aiOutput"></div>
+            <div class="ai-apply-row" id="aiApplyRow">
+                <button class="btn-ai-apply primary" onclick="applyAiAppend()">📥 追加到目标文本末尾</button>
+                <button class="btn-ai-apply btn-ai-warning" onclick="applyAiReplace()">♻️ 替换目标整段</button>
+                <button class="btn-ai-apply" onclick="applyAiToAllRoles()">🎭 写入全体角色当前幕</button>
+                <button class="btn-ai-apply" onclick="applyAiAsClues()">🔍 解析为线索卡添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 草稿恢复横幅 -->
+<div class="draft-banner" id="draftBanner" style="display:none;">
+    <span>💾 检测到上次未发布的创作草稿，是否恢复？</span>
+    <button class="ok" onclick="restoreDraft()">恢复草稿</button>
+    <button class="no" onclick="discardDraft()">放弃</button>
 </div>
 
 <div class="modal-overlay" id="seriesModal">
@@ -155,6 +258,290 @@
     let newSeriesCoverUrl = "";
     let newSeriesBgUrl = "";
     let currentBgmUrl = "";
+
+    // ==================== 🤖 AI 剧本创作助手 ====================
+    let aiState = { task: 'continue', targetType: null, roleIdx: -1, actIdx: -1 };
+    let aiResultText = '';
+    let aiTypingTimer = null;
+    const DRAFT_KEY = 'jubensha_creator_draft_v1';
+
+    // —— 打开助手（fab 全局 / ✨ 段落级按钮共用）——
+    function openAiWriter() {
+        document.getElementById('aiWriterModal').style.display = 'flex';
+        resetAiPanel();
+    }
+
+    function closeAiWriter() { document.getElementById('aiWriterModal').style.display = 'none'; stopAiTyping(); }
+
+    function resetAiPanel() {
+        aiState = { task: 'continue', targetType: null, roleIdx: -1, actIdx: -1 };
+        document.getElementById('aiTaskHint') || null;
+        document.querySelectorAll('.ai-task-btn').forEach(b => b.classList.toggle('active', b.dataset.task === 'continue'));
+        document.getElementById('aiInstruction').value = '';
+        document.getElementById('aiTargetChip').innerText = '🎯 目标：整份剧本（通读后用建议/自定义）';
+        document.getElementById('aiOutputWrap').style.display = 'none';
+        document.getElementById('aiOutput').innerText = '';
+        document.getElementById('aiGenBtn').disabled = false;
+        document.getElementById('aiGenHint').innerText = '助手会先通读剧本再创作，约需 10~30 秒';
+    }
+
+    // —— ✨ 段落级入口：绑定目标（type: pub/role/intro/truth/ending）——
+    function bindAiTarget(type, roleIdx, actIdx, label) {
+        openAiWriter();
+        aiState.targetType = type;
+        aiState.roleIdx = (roleIdx === undefined || roleIdx === null) ? -1 : roleIdx;
+        aiState.actIdx = (actIdx === undefined || actIdx === null) ? -1 : actIdx;
+        let text = label;
+        if (!text) {
+            if (type === 'pub') text = '公共剧情 · 第' + (aiState.actIdx + 1) + '幕';
+            else if (type === 'role') text = '角色「' + (roles[aiState.roleIdx] ? roles[aiState.roleIdx].name : '?') + '」 · 第' + (aiState.actIdx + 1) + '幕';
+            else if (type === 'intro') text = '剧本简介';
+            else if (type === 'truth') text = '真相复盘';
+            else if (type === 'ending') text = '结局分支「' + (endings[aiState.roleIdx] ? (endings[aiState.roleIdx].title || '未命名') : '?') + '」';
+            else if (type === 'roleIntro') text = '角色「' + (roles[aiState.roleIdx] ? roles[aiState.roleIdx].name : '?') + '」公开人设';
+        }
+        document.getElementById('aiTargetChip').innerText = '🎯 目标：' + text;
+    }
+
+    function setAiTask(btn, task) {
+        document.querySelectorAll('.ai-task-btn').forEach(b => b.classList.toggle('active', b.dataset.task === task));
+        aiState.task = task;
+        // 某些任务需要目标在"当前幕"，若无目标则自动指向公共剧情当前幕
+        if ((task === 'rolesView' || task === 'clues') && aiState.targetType === null) {
+            aiState.targetType = 'pub'; aiState.roleIdx = -1; aiState.actIdx = currentViewActIdx();
+            document.getElementById('aiTargetChip').innerText = '🎯 目标：公共剧情 · 第' + (aiState.actIdx + 1) + '幕';
+        }
+    }
+
+    function currentViewActIdx() {
+        // 当前正在编辑的角色 tab：若 roles 为空返回 0；一律按第一幕处理（编辑器逐幕显示，公共剧情无幕tab）
+        // 简化：若目标为角色，指向角色的第一幕；否则公共剧情也按"全局"→ 0
+        return 0;
+    }
+
+    // —— 收集剧本全局上下文（供 AI 通读）——
+    function collectScriptContext(targetType, roleIdx, actIdx) {
+        const title = document.getElementById('scriptTitle').value;
+        const intro = document.getElementById('scriptIntro').value;
+        const truth = document.getElementById('scriptTruth') ? document.getElementById('scriptTruth').value : '';
+        const rolesBrief = roles.map((r, i) => ({ name: r.name, intro: r.intro, actsContent: r.actsContent || [] }));
+        const ctx = {
+            title: title, intro: intro, truth: truth,
+            acts: acts,
+            publicContent: actsPublicContent,
+            roles: rolesBrief,
+            roleIndex: roleIdx, actIndex: actIdx,
+            currentContent: '',
+            additional: []
+        };
+        if (targetType === 'pub' && actIdx >= 0 && actIdx < actsPublicContent.length) {
+            ctx.currentContent = actsPublicContent[actIdx] || '';
+        } else if (targetType === 'role' && roleIdx >= 0 && roles[roleIdx]) {
+            ctx.currentContent = (roles[roleIdx].actsContent || [])[actIdx] || '';
+        } else if (targetType === 'roleIntro' && roleIdx >= 0 && roles[roleIdx]) {
+            ctx.currentContent = roles[roleIdx].intro || '';
+        } else if (targetType === 'ending' && roleIdx >= 0 && endings[roleIdx]) {
+            ctx.currentContent = endings[roleIdx].content || '';
+            ctx.currentEnding = endings[roleIdx].title || '';
+        } else if (targetType === 'intro') ctx.currentContent = intro;
+        else if (targetType === 'truth') ctx.currentContent = truth;
+        return ctx;
+    }
+
+    // —— 运行 AI ——
+    async function runAiWriter() {
+        const btn = document.getElementById('aiGenBtn');
+        const instruction = document.getElementById('aiInstruction').value.trim();
+        const hint = document.getElementById('aiGenHint');
+        btn.disabled = true;
+        stopAiTyping();
+        document.getElementById('aiOutputWrap').style.display = 'block';
+        document.getElementById('aiOutput').innerHTML = '<span class="ai-thinking"></span> AI 正在通读剧本与设定，构思中…';
+        hint.innerText = '创作中，请稍候（续写/润色约 10~20s，全体视角/线索约 20~40s）';
+
+        try {
+            // 生成上下文：目标段落内容 + 全局结构
+            const ctx = collectScriptContext(aiState.targetType, aiState.roleIdx, aiState.actIdx);
+            const payload = { task: aiState.task, context: ctx, instruction: instruction };
+            const res = await fetch('/api/ai/writer', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            }).then(r => r.json());
+
+            if (res.success && res.data && res.data.text) {
+                aiResultText = res.data.text;
+                typewriterEffect('aiOutput', aiResultText);
+                hint.innerText = '✅ 完成！检查内容后点击下方按钮写入剧本。';
+                updateApplyRowVisibility();
+            } else {
+                document.getElementById('aiOutput').innerHTML = '<span style="color:#ff8a80;">⚠️ ' + (res.msg || 'AI 未返回内容，请重试') + '</span>';
+                hint.innerText = '生成失败，可重试。';
+            }
+        } catch (e) {
+            console.error('AI 调用失败', e);
+            document.getElementById('aiOutput').innerHTML = '<span style="color:#ff8a80;">⚠️ 网络异常：' + e.message + '</span>';
+            hint.innerText = '生成失败，可重试。';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // —— 打字机效果 ——
+    function typewriterEffect(elId, text, speed = 18) {
+        const el = document.getElementById(elId);
+        el.innerHTML = '';
+        let i = 0;
+        const caret = document.createElement('span'); caret.className = 'caret';
+        function tick() {
+            if (i < text.length) {
+                const chunk = text.slice(i, i + 1);
+                el.insertBefore(document.createTextNode(chunk), caret);
+                i++;
+                aiTypingTimer = setTimeout(tick, speed);
+            } else {
+                if (caret.parentNode) caret.parentNode.removeChild(caret);
+            }
+        }
+        el.appendChild(caret);
+        tick();
+    }
+    function stopAiTyping() { if (aiTypingTimer) { clearTimeout(aiTypingTimer); aiTypingTimer = null; } }
+
+    function getAiResultPlain() {
+        // 打字机未完成时取完整结果文本
+        return aiResultText || '';
+    }
+    function copyAiResult() {
+        const t = getAiResultPlain();
+        if (!t) return;
+        if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => alert('已复制'));
+        else { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert('已复制'); }
+    }
+
+    // —— 采纳按钮可见性 ——
+    function updateApplyRowVisibility() {
+        const row = document.getElementById('aiApplyRow');
+        if (!row) return;
+        row.style.display = 'flex';
+        // 全体角色视角 / 线索 任务使用专属按钮
+        const btnAll = row.querySelectorAll('button');
+        btnAll.forEach(b => { b.style.display = 'inline-block'; });
+        if (aiState.task === 'rolesView') {
+            btnAll[0].style.display = 'none'; btnAll[1].style.display = 'none'; // 追加/替换隐藏
+            btnAll[2].style.display = 'inline-block'; // 写入全体角色
+            btnAll[3].style.display = 'none';
+        } else if (aiState.task === 'clues') {
+            btnAll[0].style.display = 'none'; btnAll[1].style.display = 'none';
+            btnAll[2].style.display = 'none';
+            btnAll[3].style.display = 'inline-block'; // 解析线索
+        } else {
+            btnAll[2].style.display = 'none'; btnAll[3].style.display = 'none';
+        }
+    }
+
+    // —— 采纳：追加 ——
+    function applyAiAppend() {
+        const t = getAiResultPlain(); if (!t) return;
+        if (writeAiToTarget(t, true)) { closeAiWriter(); saveDraftSoon(); alert('✅ 已追加到剧本'); }
+    }
+    // —— 采纳：替换 ——
+    function applyAiReplace() {
+        const t = getAiResultPlain(); if (!t) return;
+        if (confirm('将用 AI 内容替换目标整段，原内容会丢失。是否继续？')) {
+            if (writeAiToTarget(t, false)) { closeAiWriter(); saveDraftSoon(); alert('✅ 已替换目标文本'); }
+        }
+    }
+    // —— 写入目标 ——
+    function writeAiToTarget(text, append) {
+        switch (aiState.targetType) {
+            case 'pub':
+                if (aiState.actIdx >= 0 && aiState.actIdx < actsPublicContent.length) {
+                    actsPublicContent[aiState.actIdx] = append ? (actsPublicContent[aiState.actIdx] + '\n\n' + text) : text;
+                    render();
+                    return true;
+                }
+                break;
+            case 'role':
+                if (aiState.roleIdx >= 0 && roles[aiState.roleIdx]) {
+                    if (!roles[aiState.roleIdx].actsContent) roles[aiState.roleIdx].actsContent = acts.map(() => '');
+                    if (aiState.actIdx >= 0 && aiState.actIdx < roles[aiState.roleIdx].actsContent.length) {
+                        roles[aiState.roleIdx].actsContent[aiState.actIdx] = append ? (roles[aiState.roleIdx].actsContent[aiState.actIdx] + '\n\n' + text) : text;
+                        render();
+                        return true;
+                    }
+                }
+                break;
+            case 'roleIntro':
+                if (aiState.roleIdx >= 0 && roles[aiState.roleIdx]) {
+                    roles[aiState.roleIdx].intro = append ? ((roles[aiState.roleIdx].intro || '') + '\n' + text) : text;
+                    render();
+                    return true;
+                }
+                break;
+            case 'intro':
+                document.getElementById('scriptIntro').value = append ? document.getElementById('scriptIntro').value + '\n\n' + text : text;
+                return true;
+            case 'truth':
+                document.getElementById('scriptTruth').value = append ? document.getElementById('scriptTruth').value + '\n\n' + text : text;
+                return true;
+            case 'ending':
+                if (aiState.roleIdx >= 0 && endings[aiState.roleIdx]) {
+                    endings[aiState.roleIdx].content = append ? (endings[aiState.roleIdx].content + '\n\n' + text) : text;
+                    renderEndings();
+                    return true;
+                }
+                break;
+        }
+        alert('⚠️ 无法定位目标文本位置，请重新选择目标后重试。');
+        return false;
+    }
+
+    // —— 🎭 解析全体角色视角并写入 ——
+    function applyAiToAllRoles() {
+        const t = getAiResultPlain(); if (!t) return;
+        const blocks = t.split(/(?=【)/).map(s => s.trim()).filter(s => s.startsWith('【'));
+        if (blocks.length === 0) { alert('未能从结果中解析出【角色名】分段，请手动复制后使用"追加/替换"。'); return; }
+        let written = 0;
+        blocks.forEach(b => {
+            const m = b.match(/^【(.+?)】/);
+            if (!m) return;
+            const name = m[1].trim();
+            const content = b.replace(/^【.+?】/, '').trim();
+            const idx = roles.findIndex(r => r.name === name);
+            if (idx >= 0 && content) {
+                if (!roles[idx].actsContent) roles[idx].actsContent = acts.map(() => '');
+                const act = aiState.actIdx >= 0 ? aiState.actIdx : 0;
+                if (roles[idx].actsContent[act] !== undefined) {
+                    roles[idx].actsContent[act] = (roles[idx].actsContent[act] || '') + (roles[idx].actsContent[act] ? '\n\n' : '') + content;
+                    written++;
+                }
+            }
+        });
+        if (written > 0) { render(); closeAiWriter(); saveDraftSoon(); alert('✅ 已为 ' + written + ' 位角色写入第' + ((aiState.actIdx >= 0 ? aiState.actIdx : 0) + 1) + '幕视角'); }
+        else alert('未能匹配到任何角色名。请确认角色名与 AI 输出一致，或手动复制采纳。');
+    }
+
+    // —— 🔍 解析线索卡并添加 ——
+    function applyAiAsClues() {
+        const t = getAiResultPlain(); if (!t) return;
+        const blocks = t.split(/(?=【线索名】)/).map(s => s.trim()).filter(s => s.startsWith('【线索名】'));
+        if (blocks.length === 0) { alert('未能解析出线索（需要【线索名】标记）。可切换"续写"任务把内容粘贴进某条线索。'); return; }
+        let added = 0;
+        blocks.forEach(b => {
+            const name = (b.match(/【线索名】(.+)/) || [])[1];
+            if (!name) return;
+            const typeM = b.match(/【类型】(.+)/);
+            const contentM = b.match(/【内容】([\s\S]*?)(?=【|$)/);
+            const unlockM = b.match(/【解锁幕】(.+)/);
+            const content = contentM ? contentM[1].trim() : '';
+            const actName = unlockM ? unlockM[1].trim() : '';
+            const actIdx = acts.findIndex(a => a.includes(actName.replace('第','').replace('幕','')) || actName.includes(String(acts.indexOf(a)+1)));
+            const isPublic = typeM && typeM[1].includes('公开') ? 1 : 0;
+            clues.push({ name: name.trim(), desc: content, actIndex: actIdx >= 0 ? actIdx : 0, isPublic: isPublic, roleIndex: aiState.roleIdx >= 0 ? aiState.roleIdx : -1, isHidden: 0, unlockCondition: '', sceneImageUrl: '' });
+            added++;
+        });
+        if (added > 0) { render(); closeAiWriter(); saveDraftSoon(); alert('✅ 已添加 ' + added + ' 条线索卡，请检查归属与解锁条件'); }
+        else alert('解析失败，请手动录入。');
+    }
 
     async function loadSeriesList(selectSeriesId = null) {
         try {
@@ -504,8 +891,8 @@
             acts.forEach((a, i) => {
                 pubHtml += `
                     <div style="margin-bottom:15px;">
-                        <label style="color:#ff9900; font-weight:bold;">${a}</label>
-                        <textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="例如：1991年，一场大火烧毁了疗养院..." oninput="actsPublicContent[${i}]=this.value;">${actsPublicContent[i]||''}</textarea>
+                        <label style="color:#ff9900; font-weight:bold;">${a}<button type="button" class="ai-mini" title="AI 续写/润色/建议这段公共剧情" onclick="bindAiTarget('pub', -1, ${i}, '公共剧情 · ${a}')">✨ AI</button></label>
+                        <textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="例如：1991年，一场大火烧毁了疗养院..." oninput="actsPublicContent[${i}]=this.value; scheduleDraftSave();">${actsPublicContent[i]||''}</textarea>
                     </div>
                 `;
             });
@@ -520,14 +907,17 @@
                         <img id="roleAvatarPreview" src="${avatarDisplay}" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid #ff6600; box-shadow: 0 0 10px rgba(255,102,0,0.2);">
                         <input type="file" id="roleAvatarInput" hidden accept="image/*" onchange="handleRoleAvatar(this)">
                     </div>
-                    <input class="form-input" style="flex:1" value="${cur.name}" oninput="roles[${currentRoleIdx}].name=this.value; updateNavName();" placeholder="角色名称">
-                    <input class="form-input" style="flex:2" value="${cur.intro}" oninput="roles[${currentRoleIdx}].intro=this.value;" placeholder="公开人设 (例如: 男 35岁 | 现私家侦探)">
+                    <input class="form-input" style="flex:1" value="${cur.name}" oninput="roles[${currentRoleIdx}].name=this.value; updateNavName(); scheduleDraftSave();" placeholder="角色名称">
+                    <div style="flex:2; position:relative;">
+                        <input class="form-input" style="width:100%; padding-right:56px;" value="${cur.intro}" oninput="roles[${currentRoleIdx}].intro=this.value; scheduleDraftSave();" placeholder="公开人设 (例如: 男 35岁 | 现私家侦探)">
+                        <button type="button" class="ai-mini" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); height:28px; line-height:1;" title="AI 帮你完善公开人设" onclick="bindAiTarget('roleIntro', ${currentRoleIdx}, -1, null)">✨ AI</button>
+                    </div>
                 </div>
                 <div style="margin-bottom:15px; padding:15px; background:rgba(0,229,255,0.1); border-radius:10px; border:1px solid rgba(0,229,255,0.2);">
                     <h4 style="color:#00e5ff; margin-bottom:5px;">🤫 角色专属机密剧情</h4>
                     <p style="font-size:13px; color:#aaa;">在此填写该角色在每一幕中的独立视角、记忆或隐藏线索。只有选择该角色的玩家可见。</p>
                 </div>
-                ${acts.map((a, i) => `<div style="margin-bottom:15px;"><label style="color:#00e5ff; font-weight:bold;">${a}</label><textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="填写该角色的专属机密剧情..." oninput="roles[${currentRoleIdx}].actsContent[${i}]=this.value;">${cur.actsContent[i]||''}</textarea></div>`).join('')}
+                ${acts.map((a, i) => `<div style="margin-bottom:15px;"><label style="color:#00e5ff; font-weight:bold;">${a}<button type="button" class="ai-mini" style="border-color:rgba(0,229,255,0.4); color:#4dd0e1;" title="AI 续写/润色这段角色专属剧情" onclick="bindAiTarget('role', ${currentRoleIdx}, ${i}, null)">✨ AI</button></label><textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="填写该角色的专属机密剧情..." oninput="roles[${currentRoleIdx}].actsContent[${i}]=this.value; scheduleDraftSave();">${cur.actsContent[i]||''}</textarea></div>`).join('')}
                 <div id="clueContainer"></div><button class="btn" style="width:100%; background:transparent; border:1px dashed #666; color:#aaa" onclick="addClue()">+ 添加线索卡</button>
             `;
             clues.forEach((c, i) => { if(c.isPublic == 1 || c.roleIndex == currentRoleIdx) renderClue(c, i); });
@@ -547,8 +937,8 @@
             div.className = 'clue-card';
             div.style.borderLeftColor = '#e53935';
             div.innerHTML = `
-                <div style="display:flex; gap:10px; margin-bottom:10px;">
-                    <input class="form-input" style="flex:2" value="${e.title}" placeholder="结局名称 (如: 尘埃落定)" oninput="endings[${i}].title=this.value;">
+                <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                    <input class="form-input" style="flex:2" value="${e.title}" placeholder="结局名称 (如: 尘埃落定)" oninput="endings[${i}].title=this.value; scheduleDraftSave();">
                     <select class="form-select" onchange="endings[${i}].votedRoleIndex=parseInt(this.value);">
                         <option value="-1" ${e.votedRoleIndex === -1 ? 'selected' : ''}>[默认] 投错真凶时触发</option>
                         <option value="-2" ${e.votedRoleIndex === -2 ? 'selected' : ''}>[默认] 放弃投票时触发</option>
@@ -556,7 +946,10 @@
                     </select>
                     <button class="btn" style="color:red" onclick="endings.splice(${i},1); renderEndings();">删</button>
                 </div>
-                <textarea class="form-input" style="height:80px;" placeholder="玩家触发此结局后看到的剧情描述..." oninput="endings[${i}].content=this.value;">${e.content}</textarea>
+                <div style="display:flex; align-items:flex-start; gap:8px;">
+                    <textarea class="form-input" style="height:80px;" placeholder="玩家触发此结局后看到的剧情描述..." oninput="endings[${i}].content=this.value; scheduleDraftSave();">${e.content}</textarea>
+                    <button type="button" class="ai-mini" style="height:40px; align-self:center;" title="AI 续写/润色这个结局" onclick="bindAiTarget('ending', ${i}, -1, null)">✨ AI</button>
+                </div>
             `;
             container.appendChild(div);
         });
@@ -567,6 +960,76 @@
         renderEndings();
     }
 
+    // ==================== 💾 草稿自动保存 / 恢复 ====================
+    let draftTimer = null;
+    function scheduleDraftSave() {
+        if (draftTimer) clearTimeout(draftTimer);
+        draftTimer = setTimeout(saveDraft, 600);
+    }
+    function saveDraft() {
+        try {
+            const d = {
+                t: Date.now(),
+                editId: editId ? parseInt(editId) : null,
+                title: document.getElementById('scriptTitle').value,
+                intro: document.getElementById('scriptIntro').value,
+                truth: document.getElementById('scriptTruth') ? document.getElementById('scriptTruth').value : '',
+                count: document.getElementById('scriptCount').value,
+                diff: document.getElementById('scriptDiff').value,
+                seriesId: document.getElementById('scriptSeries').value,
+                coverUrl: currentCoverUrl,
+                bgmUrl: currentBgmUrl,
+                acts: acts, actsPublicContent: actsPublicContent,
+                roles: roles, clues: clues, endings: endings, architectures: architectures
+            };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+        } catch (e) { console.warn('草稿保存失败', e); }
+    }
+    function getDraft() {
+        try { const s = localStorage.getItem(DRAFT_KEY); return s ? JSON.parse(s) : null; }
+        catch (e) { return null; }
+    }
+    function hasNewerDraft() {
+        const d = getDraft();
+        if (!d) return false;
+        // 新创作：只要有草稿就提示；编辑：草稿 editId 与当前一致才提示
+        if (editId) return d.editId === parseInt(editId);
+        return true;
+    }
+    function promptDraftBanner() {
+        if (!hasNewerDraft()) return;
+        document.getElementById('draftBanner').style.display = 'flex';
+    }
+    function hideDraftBanner() { document.getElementById('draftBanner').style.display = 'none'; }
+
+    // 恢复草稿到各全局数组/输入框
+    function restoreDraft() {
+        const d = getDraft();
+        if (!d) return;
+        hideDraftBanner();
+        if (d.title !== undefined) document.getElementById('scriptTitle').value = d.title;
+        if (d.intro !== undefined) document.getElementById('scriptIntro').value = d.intro;
+        if (d.truth !== undefined && document.getElementById('scriptTruth')) document.getElementById('scriptTruth').value = d.truth;
+        if (d.count !== undefined) document.getElementById('scriptCount').value = d.count;
+        if (d.diff !== undefined) document.getElementById('scriptDiff').value = d.diff;
+        if (d.seriesId !== undefined) document.getElementById('scriptSeries').value = d.seriesId;
+        if (d.coverUrl) { currentCoverUrl = d.coverUrl; const cv = document.getElementById('coverPreview'); if (cv) { cv.src = d.coverUrl; cv.style.display = 'block'; const uh = document.getElementById('uploadHint'); if (uh) uh.style.display = 'none'; } }
+        if (d.bgmUrl) { currentBgmUrl = d.bgmUrl; const b = document.getElementById('scriptBgmDisplay'); if (b) b.value = '✅ 音乐已就绪'; }
+        if (d.acts) acts = d.acts;
+        if (d.actsPublicContent) actsPublicContent = d.actsPublicContent;
+        if (d.roles) roles = d.roles;
+        if (d.clues) clues = d.clues;
+        if (d.endings) endings = d.endings;
+        if (d.architectures) architectures = d.architectures;
+        render(); renderEndings(); renderArch();
+        alert('💾 已恢复草稿（保存于 ' + new Date(d.t).toLocaleString() + '）');
+    }
+    function discardDraft() {
+        hideDraftBanner();
+        localStorage.removeItem(DRAFT_KEY);
+    }
+
+    // 发布成功后清除草稿
     async function submitScript() {
         const username = localStorage.getItem('loginUsername');
         if (!username) {
@@ -596,7 +1059,7 @@
         const url = editId ? '/api/game/updateScript' : '/api/game/createScript';
         try {
             const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }).then(r => r.json());
-            if(res.success) { alert("🎉 发布成功！"); location.href='my-creation.html'; }
+            if(res.success) { localStorage.removeItem(DRAFT_KEY); alert("🎉 发布成功！"); location.href='my-creation.html'; }
             else alert("发布失败：" + res.msg);
         } catch(e) { alert("网络异常"); }
     }
@@ -667,6 +1130,8 @@
                 }
                 render();
                 renderEndings();
+                // 编辑已有剧本：加载完成后若存在该剧本的更新草稿，提示恢复
+                promptDraftBanner();
             }
         } else {
             syncRoles();
@@ -675,6 +1140,7 @@
                 { title: "迷雾重重", content: "没有人被指控，一切真相永远被掩埋在了时间里...", votedRoleIndex: -2 }
             ];
             renderEndings();
+            promptDraftBanner();
         }
     };
 </script>
