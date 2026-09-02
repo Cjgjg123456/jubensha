@@ -13,7 +13,7 @@
         body { width: 100vw; height: 100vh; background-color: #1a1a1a; color: #e0e0e0; display: flex; justify-content: center; align-items: center; padding: 20px; }
 
         .container { display: flex; gap: 20px; width: 100%; max-width: 1400px; height: 100%; background: #2a2a2a; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3a3a3a; }
-        .room-main { flex: 1; display: flex; flex-direction: column; min-width: 0; transition: flex 0.45s ease; }
+        .room-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .room-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3a3a3a; padding-bottom: 20px; margin-bottom: 30px; }
         .room-title-box h1 { font-size: 28px; color: #d4b475; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         .room-title-box h1.ai-mode-text { color: #00e5ff; text-shadow: 0 0 10px rgba(0,229,255,0.5); }
@@ -21,21 +21,24 @@
         .back-btn { background: #b89758; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 15px; font-weight: bold; }
         .back-btn:hover { background: #d4b475; transform: translateY(-2px); }
 
-        /* ====== 可折叠房间频道（聊天抽屉） ====== */
-        .room-chat { flex: 0 0 auto; width: 360px; min-width: 0; background: #222; border-radius: 12px; display: flex; flex-direction: column; border: 1px solid #3a3a3a; overflow: hidden; transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1); }
-        .chat-panel { display: flex; flex-direction: column; width: 360px; flex: 1 0 auto; min-height: 0; }
-        /* 折叠把手（收起后显示） */
-        .chat-handle { display: none; width: 44px; height: 100%; background: #262626; border-radius: 12px; border: 1px solid #3a3a3a; flex-direction: column; align-items: center; justify-content: center; gap: 12px; cursor: pointer; transition: background 0.3s, border-color 0.3s; position: relative; }
-        .chat-handle:hover { background: #303030; border-color: #d4b475; }
-        .chat-handle:hover .handle-arrow { transform: translateX(2px); }
-        .handle-arrow { font-size: 16px; color: #d4b475; transition: transform 0.3s; }
-        .handle-icon { font-size: 20px; filter: grayscale(0.2); }
-        .handle-text { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 3px; font-size: 12px; color: #d4b475; font-weight: bold; user-select: none; }
-        .handle-badge { position: absolute; top: 14px; right: 8px; background: #ff5252; color: #fff; font-size: 10px; min-width: 16px; height: 16px; line-height: 16px; border-radius: 8px; text-align: center; padding: 0 4px; font-weight: bold; display: none; box-shadow: 0 0 8px rgba(255,82,82,0.5); animation: badgePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        /* ====== 可折叠房间频道（窗帘式抽屉，右缘固定从右向左裁切，全程无跳变） ====== */
+        .room-chat { position: relative; flex: 0 0 auto; width: 360px; background: #222; border-radius: 12px; border: 1px solid #3a3a3a; overflow: hidden; transition: width 0.45s cubic-bezier(0.33, 0.8, 0.2, 1); }
+        /* 聊天面板：固定 360px 宽度并靠右，容器收缩时被 overflow 裁切 = 顺滑窗帘 */
+        .chat-panel { position: absolute; top: 0; bottom: 0; right: 0; width: 360px; display: flex; flex-direction: column; background: #222; }
+        /* 折叠把手：占满聊天容器，折叠完成后淡入 */
+        .chat-handle { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(180deg, #232323, #1e1e1e); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }
+        .container.chat-collapsed .chat-handle { opacity: 1; pointer-events: auto; transition: opacity 0.32s ease 0.34s; }
+        .chat-handle:hover { background: linear-gradient(180deg, #2a2a2a, #242424); }
+        .handle-btn { width: 34px; height: 34px; border-radius: 50%; background: rgba(212,180,117,0.12); border: 1px solid rgba(212,180,117,0.4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.3s ease; box-shadow: 0 2px 10px rgba(0,0,0,0.35); }
+        .chat-handle:hover .handle-btn { background: rgba(212,180,117,0.25); border-color: #d4b475; box-shadow: 0 0 14px rgba(212,180,117,0.35); transform: translateX(2px); }
+        .handle-btn .handle-icon { font-size: 17px; line-height: 1; filter: grayscale(0.15); }
+        .handle-text { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 4px; font-size: 11px; color: #9a9a9a; font-weight: bold; user-select: none; }
+        .chat-handle:hover .handle-text { color: #d4b475; }
+        .handle-badge { position: absolute; top: 10px; right: 8px; background: #ff5252; color: #fff; font-size: 10px; min-width: 16px; height: 16px; line-height: 16px; border-radius: 8px; text-align: center; padding: 0 4px; font-weight: bold; display: none; box-shadow: 0 0 8px rgba(255,82,82,0.5); animation: badgePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes badgePop { from { transform: scale(0); } to { transform: scale(1); } }
         .container.chat-collapsed .room-chat { width: 44px; }
-        .container.chat-collapsed .chat-panel { display: none; }
-        .container.chat-collapsed .chat-handle { display: flex; }
+        /* 折叠后主区平滑让位，避免内容在动画中重排跳动 */
+        .container.chat-collapsed .room-body { overflow-y: auto; }
 
         .chat-header { padding: 16px 18px; border-bottom: 1px solid #3a3a3a; font-size: 16px; font-weight: bold; color: #d4b475; display: flex; justify-content: space-between; align-items: center; }
         .chat-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -187,24 +190,27 @@
         .players-section { background: #262626; border: 1px solid #3a3a3a; border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
         .section-title { font-size: 15px; font-weight: bold; color: #d4b475; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .section-title .count-badge { background: rgba(184,151,88,0.2); color: #d4b475; font-size: 12px; padding: 2px 10px; border-radius: 12px; }
-        .players-strip { display: flex; flex-wrap: wrap; gap: 12px; min-height: 20px; }
-        .player-chip { display: flex; align-items: center; gap: 10px; background: #333; border: 1px solid #444; border-radius: 30px; padding: 6px 14px 6px 6px; transition: all 0.4s ease; animation: chipIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        /* 单行滑动：折叠动画中不换行 → 无布局跳动 */
+        .players-strip { display: flex; flex-wrap: nowrap; gap: 10px; min-height: 20px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+        .players-strip::-webkit-scrollbar { display: none; }
+        .player-chip { display: flex; align-items: center; gap: 8px; background: #333; border: 1px solid #444; border-radius: 30px; padding: 5px 12px 5px 5px; flex-shrink: 0; transition: all 0.4s ease; animation: chipIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         .player-chip.host-chip { border-color: #d4b475; box-shadow: 0 0 12px rgba(212,180,117,0.25); }
         .player-chip.me-chip { background: linear-gradient(135deg, rgba(184,151,88,0.25), rgba(184,151,88,0.1)); border-color: #d4b475; }
         .player-chip.role-ready-chip { border-color: #b89758; }
         @keyframes chipIn { from { opacity: 0; transform: translateY(-12px) scale(0.8); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        .player-chip .chip-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #555; flex-shrink: 0; background: #444; }
+        .player-chip .chip-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #555; flex-shrink: 0; background: #444; }
         .player-chip.me-chip .chip-avatar { border-color: #d4b475; }
-        .player-chip .chip-info { display: flex; flex-direction: column; line-height: 1.25; }
-        .player-chip .chip-name { font-size: 13px; color: #fff; font-weight: bold; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-chip .chip-info { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+        .player-chip .chip-name { font-size: 13px; color: #fff; font-weight: bold; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .player-chip .chip-name .host-tag { color: #ffcc00; font-size: 11px; margin-left: 3px; }
-        .player-chip .chip-role { font-size: 11px; color: #b89758; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-chip .chip-role { font-size: 11px; color: #b89758; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .player-chip .chip-role.empty { color: #777; }
 
         /* —— 角色选择区 —— */
         .roles-section { background: #262626; border: 1px solid #3a3a3a; border-radius: 12px; padding: 16px 18px; }
         .roles-hint { font-size: 12px; color: #888; margin-left: auto; }
-        .roles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+        /* 列数由 JS 按角色数固定设置（避免宽度动画中 auto-fill 跳列抖动） */
+        .roles-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
         .pick-role-card { position: relative; background: #333; border: 2px solid #444; border-radius: 14px; padding: 14px 10px 12px; text-align: center; cursor: pointer; transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275); animation: cardPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; overflow: hidden; }
         @keyframes cardPop { from { opacity: 0; transform: scale(0.85) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
         .pick-role-card:hover:not(.taken):not(.selected) { transform: translateY(-4px) scale(1.03); border-color: #d4b475; box-shadow: 0 8px 20px rgba(212,180,117,0.3); }
@@ -272,8 +278,7 @@
     <div class="room-chat" id="roomChat">
         <!-- ✅ 折叠把手：聊天区收起后显示 -->
         <div class="chat-handle" onclick="toggleChatPanel(false)" title="展开房间频道">
-            <span class="handle-arrow">▶</span>
-            <span class="handle-icon">💬</span>
+            <span class="handle-btn"><span class="handle-icon">💬</span></span>
             <span class="handle-text">房间频道</span>
             <span class="handle-badge" id="chatUnreadBadge">0</span>
         </div>
@@ -633,6 +638,15 @@ async function updateRoomStatus(totalSeats, username, roomId) {
             grid.innerHTML = '<div style="color:#888; text-align:center; padding:20px; grid-column:1/-1;">该剧本暂无角色配置</div>';
             return;
         }
+
+        // ✅ 固定列数（按角色数量布局，宽度变化时卡片等比缩放，不跳列不抖动）
+        const roleCount = availableRoles.length;
+        let columns;
+        if (roleCount <= 2) columns = 2;
+        else if (roleCount <= 3) columns = 3;
+        else if (roleCount <= 4) columns = 2;
+        else columns = 3;
+        grid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
 
         // 构建 角色ID -> 选择者 映射
         const takenByMap = {};
