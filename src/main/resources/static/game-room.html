@@ -863,10 +863,9 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         updateAiActionButtons();
     }
 
-    // ✅ AI 模式成员列表渲染（真人 + AI 剧友 chips）
+    // ✅ AI 模式成员列表渲染（真人 + AI 剧友 chips）——仅初次全量，之后增量更新
     function renderAiMembersStrip() {
         const strip = document.getElementById('playersStrip');
-        const currentUserId = localStorage.getItem('userId');
         let chipsHtml = '';
         const seen = new Set();
         const members = aiModeMembers.filter(m => {
@@ -878,13 +877,12 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         members.sort((a, b) => (a.isAi ? 1 : 0) - (b.isAi ? 1 : 0));
 
         members.forEach((m, idx) => {
-            const isMe = !m.isAi;
             if (m.isAi) {
                 const avatarUrl = m.avatar && m.avatar !== '' ? m.avatar
                     : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2746%27 fill=%27%2300b4db%27/%3E%3Ctext x=%2750%27 y=%2764%27 text-anchor=%27middle%27 font-size=%2734%27 fill=%27white%27%3E🤖%3C/text%3E%3C/svg%3E';
                 const roleText = m.roleId && m.roleName ? `🎭 ${m.roleName}` : '⏳ 等待分配';
                 chipsHtml += `
-                    <div class="player-chip ai-chip" style="animation-delay:${idx * 50}ms">
+                    <div class="player-chip ai-chip" data-user-id="${escapeHtml(m.userId)}" style="animation-delay:${idx * 50}ms">
                         <img class="chip-avatar" src="${avatarUrl}" onerror="this.src='${getInitialsAvatar(m.username)}';">
                         <div class="chip-info">
                             <div class="chip-name">${escapeHtml(m.username)}</div>
@@ -896,7 +894,7 @@ async function updateRoomStatus(totalSeats, username, roomId) {
                     ? m.avatar : getAvatarUrl(m.username, null);
                 const roleText = m.roleId && m.roleName ? `🎭 ${m.roleName}` : '⏳ 请选择角色';
                 chipsHtml += `
-                    <div class="player-chip me-chip host-chip" style="animation-delay:${idx * 50}ms">
+                    <div class="player-chip me-chip host-chip" data-user-id="${escapeHtml(m.userId)}" style="animation-delay:${idx * 50}ms">
                         <img class="chip-avatar" src="${avatarUrl}" onerror="this.src='${getInitialsAvatar(m.username)}';">
                         <div class="chip-info">
                             <div class="chip-name">${escapeHtml(m.username)} (我)<span class="host-tag">👑</span></div>
@@ -909,10 +907,23 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         document.getElementById('playersCountBadge').innerText = `${members.length}/${aiModeMembers.length}`;
     }
 
-    // ✅ AI 模式角色卡片渲染：真人可选，AI 领取的角色显示 ai-taken
+    // ✅ 增量更新单个成员 chip 的角色文本（不重建 DOM，避免动画震荡）
+    function updateAiMemberChip(m) {
+        const strip = document.getElementById('playersStrip');
+        if (!strip) return;
+        const uid = String(m.userId).replace(/["\\]/g, '');
+        const chip = strip.querySelector(`.player-chip[data-user-id="${uid}"]`);
+        if (!chip) return;
+        const roleEl = chip.querySelector('.chip-role');
+        if (!roleEl) return;
+        const roleText = m.roleId && m.roleName ? `🎭 ${m.roleName}` : (m.isAi ? '⏳ 等待分配' : '⏳ 请选择角色');
+        roleEl.textContent = roleText;
+        roleEl.classList.toggle('empty', !m.roleId);
+    }
+
+    // ✅ AI 模式角色卡片渲染——仅初次全量建卡；卡片状态始终由 syncAiRoleCard 增量维护
     function renderAiRolesGrid() {
         const grid = document.getElementById('rolesGrid');
-        const currentUserId = localStorage.getItem('userId');
         if (!availableRoles || availableRoles.length === 0) {
             grid.innerHTML = '<div style="color:#888; text-align:center; padding:20px; grid-column:1/-1;">该剧本暂无角色配置</div>';
             return;
@@ -926,37 +937,13 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         columns = Math.min(columns, 4);
         grid.style.gridTemplateColumns = `repeat(${columns}, 170px)`;
 
-        const now = Date.now();
         const rolesHtml = availableRoles.map((role, idx) => {
-            const roleIdStr = String(role.roleId);
-            // 谁领取了这个角色
-            const takenBy = aiModeMembers.find(m => m.roleId !== null && String(m.roleId) === roleIdStr);
-            const isMine = takenBy && !takenBy.isAi;
-
-            let cardClass = 'pick-role-card';
-            let badgeHtml = '';
-            if (isMine) {
-                cardClass += ' selected';
-                badgeHtml = '<div class="selected-mark">✓</div>';
-            } else if (takenBy) {
-                cardClass += ' ai-taken';
-                if (now - (roleTakenFlashTimes[roleIdStr] || 0) < 2000) {
-                    cardClass += ' animate-taken';
-                }
-                badgeHtml = `
-                    <div class="taken-badge">
-                        <img class="taken-avatar" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2746%27 fill=%27%2300b4db%27/%3E%3Ctext x=%2750%27 y=%2764%27 text-anchor=%27middle%27 font-size=%2734%27 fill=%27white%27%3E🤖%3C/text%3E%3C/svg%3E">
-                        <span class="taken-text">${escapeHtml(takenBy.username)} 代理</span>
-                    </div>`;
-            }
-
             const roleAvatar = role.avatar && role.avatar !== '' && !role.avatar.includes('default_role.jpg')
                 ? role.avatar : getAvatarUrl(role.name, null);
             const desc = role.background || '暂无简介';
 
             return `
-                <div class="${cardClass}" data-role-id="${role.roleId}" style="animation-delay:${idx * 40}ms" onclick="pickAiRole(${role.roleId})">
-                    ${badgeHtml}
+                <div class="pick-role-card" data-role-id="${role.roleId}" style="animation-delay:${idx * 40}ms" onclick="pickAiRole(${role.roleId})">
                     <div class="role-avatar-wrap"><img src="${roleAvatar}" onerror="this.src='${getAvatarUrl(role.name, null)}';"></div>
                     <div class="pick-role-name">${escapeHtml(role.name)}</div>
                     <div class="pick-role-desc">${escapeHtml(desc)}</div>
@@ -964,10 +951,62 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         }).join('');
 
         grid.innerHTML = rolesHtml;
-        document.getElementById('rolesHint').innerText =
-            aiModeMembers.some(m => m.roleId) && !aiModeMembers.find(m => !m.isAi)?.roleId
-                ? 'AI 剧友正在领取角色... 点击可选卡片切换你的选择'
-                : '点击角色卡片选择你扮演的角色，AI 剧友会自动补位';
+        // 首次铺好所有卡片状态
+        aiModeMembers.forEach(m => { if (m.roleId !== null && m.roleId !== undefined) updateAiRoleCardByRole(String(m.roleId)); });
+        updateAiRolesHint();
+    }
+
+    // ✅ 单张角色卡状态同步（真人选中 / AI 领取 / 释放），只操作该卡 DOM，无全局重建
+    function updateAiRoleCardByRole(roleIdStr) {
+        const card = document.querySelector(`.pick-role-card[data-role-id="${roleIdStr}"]`);
+        if (!card) return;
+        const takenBy = aiModeMembers.find(m => m.roleId !== null && String(m.roleId) === roleIdStr);
+        const isMine = takenBy && !takenBy.isAi;
+
+        // 清除旧状态
+        card.classList.remove('selected', 'ai-taken', 'animate-taken');
+        card.querySelectorAll('.selected-mark, .taken-badge').forEach(el => el.remove());
+
+        if (isMine) {
+            card.classList.add('selected');
+            const mark = document.createElement('div');
+            mark.className = 'selected-mark';
+            mark.textContent = '✓';
+            card.appendChild(mark);
+        } else if (takenBy) {
+            card.classList.add('ai-taken');
+            if (Date.now() - (roleTakenFlashTimes[roleIdStr] || 0) < 2000) {
+                card.classList.add('animate-taken');
+            }
+            const badge = document.createElement('div');
+            badge.className = 'taken-badge';
+            badge.innerHTML = `
+                <img class="taken-avatar" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2746%27 fill=%27%2300b4db%27/%3E%3Ctext x=%2750%27 y=%2764%27 text-anchor=%27middle%27 font-size=%2734%27 fill=%27white%27%3E🤖%3C/text%3E%3C/svg%3E">
+                <span class="taken-text">${escapeHtml(takenBy.username)} 代理</span>`;
+            card.appendChild(badge);
+            setTimeout(() => card.classList.remove('animate-taken'), 600);
+        }
+    }
+
+    // ✅ 同步全部角色卡状态（选/换/取消时用，只改类与徽章，不重建网格）
+    function syncAllAiRoleCards() {
+        availableRoles.forEach(r => updateAiRoleCardByRole(String(r.roleId)));
+        aiModeMembers.forEach(m => updateAiMemberChip(m));
+        updateAiRolesHint();
+    }
+
+    function updateAiRolesHint() {
+        const me = aiModeMembers.find(m => !m.isAi);
+        const hint = document.getElementById('rolesHint');
+        if (!hint) return;
+        const anyAiAssigned = aiModeMembers.some(m => m.isAi && m.roleId);
+        if (me && me.roleId && !anyAiAssigned) {
+            hint.innerText = '正在通知 AI 剧友领取角色...';
+        } else if (me && me.roleId) {
+            hint.innerText = '点击可选卡片可切换你的角色';
+        } else {
+            hint.innerText = '点击角色卡片选择你扮演的角色，AI 剧友会自动补位';
+        }
     }
 
     // ✅ AI 模式点击角色：真人选择自己角色（可点任何卡片，AI 会让出）
@@ -984,8 +1023,10 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         if (String(me.roleId) === String(roleId)) {
             me.roleId = null; me.roleName = null;
             window.selectedRoleId = null;
+            if (aiAssignTimer) { clearTimeout(aiAssignTimer); aiAssignTimer = null; }
             releaseAllAiRoles();
-            renderAiMembersStrip(); renderAiRolesGrid(); updateAiActionButtons();
+            syncAllAiRoleCards();
+            updateAiActionButtons();
             return;
         }
 
@@ -1001,13 +1042,14 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         // 释放所有 AI 已领角色，重新分配（保留真人选择）
         releaseAllAiRoles();
 
-        renderAiMembersStrip(); renderAiRolesGrid(); updateAiActionButtons();
+        syncAllAiRoleCards();
+        updateAiActionButtons();
 
         // 依次让 AI 领取剩余角色（动画）
         assignAiRemainingRoles();
     };
 
-    // ✅ AI 依次领取剩余角色（间隔动画）
+    // ✅ AI 依次领取剩余角色（间隔动画，增量更新单卡，无全量重建）
     function assignAiRemainingRoles() {
         const me = aiModeMembers.find(m => !m.isAi);
         if (!me || !me.roleId) return;
@@ -1022,22 +1064,28 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         for (let i = 0; i < assignCount; i++) {
             const ai = aiMembers[i];
             const role = remainingRoles[i];
-            const delay = 500 + i * 620; // 逐个延迟动画
+            const delay = 550 + i * 700; // 逐个延迟动画
             (function(aiMember, roleObj, roleIdStr) {
                 aiAssignTimer = setTimeout(() => {
-                    aiMember.roleId = roleObj.roleId;
-                    aiMember.roleName = roleObj.name;
-                    roleTakenFlashTimes[roleIdStr] = Date.now();
-                    renderAiMembersStrip();
-                    renderAiRolesGrid();
-                    updateAiActionButtons();
+                    // 该 AI 可能已被真人"抢角"释放（此时跳过）
+                    if (aiMember.isAi && aiMember.roleId === null) {
+                        aiMember.roleId = roleObj.roleId;
+                        aiMember.roleName = roleObj.name;
+                        roleTakenFlashTimes[roleIdStr] = Date.now();
+                        // ✅ 只增量更新这一张卡 + 这一个成员
+                        updateAiRoleCardByRole(roleIdStr);
+                        updateAiMemberChip(aiMember);
+                        updateAiActionButtons();
+                        updateAiRolesHint();
+                    }
                 }, delay);
             })(ai, role, String(role.roleId));
         }
         // 最终状态
-        const finalDelay = 500 + assignCount * 620 + 200;
+        const finalDelay = 550 + assignCount * 700 + 250;
         aiAssignTimer = setTimeout(() => {
             updateAiActionButtons();
+            updateAiRolesHint();
         }, finalDelay);
     }
 
