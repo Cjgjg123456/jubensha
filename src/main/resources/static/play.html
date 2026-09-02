@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>古建奇案馆 - 阅读剧本与互动搜证</title>
     <script type="importmap">
-        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+        { "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three/" } }
     </script>
     <script>
     // ⚡ 性能优化：延迟加载非关键脚本
@@ -2110,7 +2110,7 @@ let model, mixer, currentAction;
 
 // Draco 解压器
 const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/');
+dracoLoader.setDecoderPath('/vendor/three/libs/draco/');
 dracoLoader.setDecoderConfig({ type: 'js' });
 
 // 加载模型
