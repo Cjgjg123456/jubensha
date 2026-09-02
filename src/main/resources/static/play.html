@@ -280,10 +280,10 @@
         .side-collapsed > * { opacity: 0 !important; pointer-events: none; }
         .side-collapsed > .side-fab { opacity: 1 !important; pointer-events: auto; }
 
-        /* ⭐ 折叠防白屏核心：侧栏内容宽度固定，折叠仅由外壳 overflow 裁剪，
-           内部布局（含 3D 画布 canvas）尺寸全程不变，展开后无 resize 损坏 */
+        /* ⭐ 折叠防白屏核心：聊天栏内容宽度固定，折叠仅由外壳 overflow 裁剪，
+           内部布局（含 3D 画布 canvas）尺寸全程不变，展开后无 resize 损坏。
+           注意：仅约束聊天栏；左侧角色栏无 canvas，不用固定（头像需保持原尺寸） */
         .chat-sidebar > *:not(.side-fab):not(.side-toggle) { width: 320px; min-width: 320px; flex-shrink: 0; }
-        .role-sidebar > *:not(.side-fab):not(.side-toggle) { width: 220px; min-width: 220px; flex-shrink: 0; margin-left: auto; margin-right: auto; }
         #dm-avatar-panel { width: 320px !important; }
 
         /* 展开把手（浮在窄栏中央） */
