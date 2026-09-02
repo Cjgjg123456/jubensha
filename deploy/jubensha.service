@@ -1,0 +1,18 @@
+[Unit]
+Description=JubenSha Game Server (Spring Boot)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/jubensha
+EnvironmentFile=/opt/jubensha/.env
+ExecStart=/usr/bin/java -jar /opt/jubensha/jubensha-0.0.1-SNAPSHOT.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+StandardOutput=append:/opt/jubensha/server.log
+StandardError=append:/opt/jubensha/server.log
+
+[Install]
+WantedBy=multi-user.target
