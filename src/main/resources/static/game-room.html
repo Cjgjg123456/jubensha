@@ -158,6 +158,64 @@
             0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.4); }
             50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 82, 82, 0); }
         }
+
+        /* ====== 高级版房间界面：玩家列表 + 角色选择区 ====== */
+        .room-body { flex: 1; display: flex; flex-direction: column; overflow-y: auto; min-height: 0; padding-right: 5px; }
+        .room-body::-webkit-scrollbar { width: 6px; }
+        .room-body::-webkit-scrollbar-thumb { background: rgba(184,151,88,0.3); border-radius: 3px; }
+
+        /* —— 玩家列表区 —— */
+        .players-section { background: #262626; border: 1px solid #3a3a3a; border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
+        .section-title { font-size: 15px; font-weight: bold; color: #d4b475; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .section-title .count-badge { background: rgba(184,151,88,0.2); color: #d4b475; font-size: 12px; padding: 2px 10px; border-radius: 12px; }
+        .players-strip { display: flex; flex-wrap: wrap; gap: 12px; min-height: 20px; }
+        .player-chip { display: flex; align-items: center; gap: 10px; background: #333; border: 1px solid #444; border-radius: 30px; padding: 6px 14px 6px 6px; transition: all 0.4s ease; animation: chipIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .player-chip.host-chip { border-color: #d4b475; box-shadow: 0 0 12px rgba(212,180,117,0.25); }
+        .player-chip.me-chip { background: linear-gradient(135deg, rgba(184,151,88,0.25), rgba(184,151,88,0.1)); border-color: #d4b475; }
+        .player-chip.role-ready-chip { border-color: #b89758; }
+        @keyframes chipIn { from { opacity: 0; transform: translateY(-12px) scale(0.8); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .player-chip .chip-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #555; flex-shrink: 0; background: #444; }
+        .player-chip.me-chip .chip-avatar { border-color: #d4b475; }
+        .player-chip .chip-info { display: flex; flex-direction: column; line-height: 1.25; }
+        .player-chip .chip-name { font-size: 13px; color: #fff; font-weight: bold; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-chip .chip-name .host-tag { color: #ffcc00; font-size: 11px; margin-left: 3px; }
+        .player-chip .chip-role { font-size: 11px; color: #b89758; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-chip .chip-role.empty { color: #777; }
+
+        /* —— 角色选择区 —— */
+        .roles-section { background: #262626; border: 1px solid #3a3a3a; border-radius: 12px; padding: 16px 18px; }
+        .roles-hint { font-size: 12px; color: #888; margin-left: auto; }
+        .roles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+        .pick-role-card { position: relative; background: #333; border: 2px solid #444; border-radius: 14px; padding: 14px 10px 12px; text-align: center; cursor: pointer; transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275); animation: cardPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; overflow: hidden; }
+        @keyframes cardPop { from { opacity: 0; transform: scale(0.85) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .pick-role-card:hover:not(.taken):not(.selected) { transform: translateY(-4px) scale(1.03); border-color: #d4b475; box-shadow: 0 8px 20px rgba(212,180,117,0.3); }
+        .pick-role-card .role-avatar-wrap { width: 64px; height: 64px; margin: 0 auto 8px; border-radius: 50%; overflow: hidden; border: 3px solid #555; background: #444; position: relative; transition: all 0.35s ease; }
+        .pick-role-card .role-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .pick-role-card .pick-role-name { font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pick-role-card .pick-role-desc { font-size: 11px; color: #999; line-height: 1.35; height: 30px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+        /* 我的选择 */
+        .pick-role-card.selected { border-color: #ffcc00; background: linear-gradient(160deg, rgba(255,204,0,0.18), rgba(184,151,88,0.08)); box-shadow: 0 0 24px rgba(255,204,0,0.45); transform: scale(1.05); animation: selectBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .pick-role-card.selected .role-avatar-wrap { border-color: #ffcc00; box-shadow: 0 0 16px rgba(255,204,0,0.7); transform: scale(1.08); }
+        @keyframes selectBounce { 0% { transform: scale(0.8); } 40% { transform: scale(1.15); } 70% { transform: scale(0.97); } 100% { transform: scale(1.05); } }
+        .pick-role-card .selected-mark { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: #ffcc00; color: #1a1a1a; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; animation: markPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.15s backwards; box-shadow: 0 2px 8px rgba(255,204,0,0.5); }
+
+        /* 已被他人选择 */
+        .pick-role-card.taken { opacity: 0.55; cursor: not-allowed; border-color: rgba(255,80,80,0.35); background: rgba(0,0,0,0.25); filter: grayscale(60%) brightness(0.75); }
+        .pick-role-card.taken .role-avatar-wrap { border-color: #666; }
+        .pick-role-card.taken.animate-taken { animation: takenShake 0.5s ease; }
+        @keyframes takenShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px) rotate(-1deg); } 40% { transform: translateX(6px) rotate(1deg); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+        .pick-role-card .taken-badge { position: absolute; inset: 0; background: rgba(15,15,20,0.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; animation: fadeIn 0.4s ease; backdrop-filter: blur(1px); }
+        .pick-role-card .taken-badge .taken-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #ff8a80; box-shadow: 0 0 10px rgba(255,138,128,0.5); }
+        .pick-role-card .taken-badge .taken-text { font-size: 12px; color: #ffb4b4; font-weight: bold; text-shadow: 0 1px 3px rgba(0,0,0,0.8); max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .pick-role-card .pick-role-status { position: absolute; bottom: 6px; left: 0; right: 0; font-size: 10px; color: #888; }
+
+        /* 选择成功庆祝 */
+        @keyframes confettiPop { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+        .pick-role-card.selected .selected-mark { animation: markPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.2s backwards, confettiPulse 1.2s ease 0.6s infinite; }
+        @keyframes markPop { from { transform: scale(0) rotate(-180deg); } to { transform: scale(1) rotate(0deg); } }
+        @keyframes confettiPulse { 0%, 100% { box-shadow: 0 0 8px rgba(255,204,0,0.4); } 50% { box-shadow: 0 0 18px rgba(255,204,0,0.9); } }
     </style>
 </head>
 <body>
@@ -172,6 +230,19 @@
             <button class="back-btn" onclick="leaveRoom()">解散房间</button>
         </div>
         <div class="seats-container" id="seatsContainer"></div>
+        
+        <!-- ✅ 高级版联机房间：玩家列表 + 角色选择区（内嵌主界面，非弹窗） -->
+        <div class="room-body" id="roomBody" style="display:none;">
+            <div class="players-section">
+                <div class="section-title">👥 房间成员 <span class="count-badge" id="playersCountBadge">0/0</span></div>
+                <div class="players-strip" id="playersStrip"></div>
+            </div>
+            <div class="roles-section">
+                <div class="section-title">🎭 选择你的角色 <span class="roles-hint" id="rolesHint">点击角色卡片即可选择</span></div>
+                <div class="roles-grid" id="rolesGrid"></div>
+            </div>
+        </div>
+
         <div class="action-bar">
             <button class="start-btn ai-ready-btn" id="startGameBtn" onclick="openRoleModal()">🎭 选择角色</button>
             <!-- ✅ 房主专用：开始游戏按钮 -->
@@ -331,6 +402,18 @@ window.onload = async function() {
     targetScriptId = parseInt(idParam);
     currentMode = urlParams.get('mode') || 'online';
 
+    // ✅ 确保头像已缓存到 localStorage（登录时未存，这里补拉一次）
+    const cachedAvatar = localStorage.getItem('avatarUrl');
+    const loginName = localStorage.getItem('loginUsername');
+    if ((!cachedAvatar || cachedAvatar === 'undefined') && loginName) {
+        try {
+            const profRes = await fetch(`/api/user/profile?username=${encodeURIComponent(loginName)}`).then(r => r.json());
+            if (profRes.success && profRes.data && profRes.data.avatarUrl) {
+                localStorage.setItem('avatarUrl', profRes.data.avatarUrl);
+            }
+        } catch (e) { console.warn('[头像] 拉取头像失败', e); }
+    }
+
     document.getElementById('displayRoomName').innerText = roomName;
     document.getElementById('displayScriptName').innerText = scriptName;
     
@@ -373,6 +456,7 @@ window.onload = async function() {
 }
 
 let currentHostId = null;
+let currentTotalSeats = 6; // ✅ 房间最大人数（联机高级界面用）
 
 async function updateRoomStatus(totalSeats, username, roomId) {
     if (currentMode === 'online' && roomId) {
@@ -392,6 +476,7 @@ async function updateRoomStatus(totalSeats, username, roomId) {
                     const serverTotalSeats = room.maxPlayers || totalSeats;
                     const serverPlayerCount = room.playerCount || room.players.length || 1;
                     currentHostId = room.hostId || null;
+                    currentTotalSeats = serverTotalSeats; // ✅ 记录房间最大人数
                     
                     // ✅ 更新房间标题和人数显示（从数据库获取）
                     document.getElementById('displayRoomName').innerText = room.roomName || '未知房间';
@@ -419,6 +504,246 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         }
     }
 }
+
+    // ============================================================
+    // ✅ 高级版联机房间界面：玩家列表区 + 角色选择区（全程显示头像）
+    // ============================================================
+    function renderOnlineRoomUI(totalSeats, username, currentPlayerCount, roomPlayers) {
+        document.getElementById('roomBody').style.display = 'flex';
+        document.getElementById('seatsContainer').style.display = 'none';
+
+        // —— 1. 玩家列表区：头像 + 名字 + 已选角色 ——
+        const strip = document.getElementById('playersStrip');
+        const currentUserId = localStorage.getItem('userId');
+        let chipsHtml = '';
+        const players = roomPlayers && roomPlayers.length > 0 ? roomPlayers : [];
+        
+        players.forEach((p, idx) => {
+            const isMe = String(p.userId) === String(currentUserId) || p.username === username;
+            const avatarUrl = p.avatar && p.avatar !== '' && !p.avatar.includes('default_role.jpg')
+                ? p.avatar : getAvatarUrl(p.username, null);
+            const isHost = String(p.userId) === String(currentHostId) || (currentHostId === null && idx === 0);
+            const chipClass = 'player-chip' + (isHost ? ' host-chip' : '') + (isMe ? ' me-chip' : '') + (p.roleId ? ' role-ready-chip' : '');
+            const hostTag = isHost ? '<span class="host-tag">👑</span>' : '';
+            const roleText = p.roleId && p.roleName ? `🎭 ${p.roleName}` : '⏳ 未选角色';
+            chipsHtml += `
+                <div class="player-chip ${chipClass}" style="animation-delay:${idx * 60}ms">
+                    <img class="chip-avatar" src="${avatarUrl}" onerror="this.src='${getInitialsAvatar(p.username)}';">
+                    <div class="chip-info">
+                        <div class="chip-name">${escapeHtml(p.username)}${isMe ? ' (我)' : ''}${hostTag}</div>
+                        <div class="chip-role ${p.roleId ? '' : 'empty'}">${roleText}</div>
+                    </div>
+                </div>`;
+        });
+        // 空位提示
+        for (let i = players.length; i < totalSeats; i++) {
+            chipsHtml += `
+                <div class="player-chip" style="opacity:0.35; animation-delay:${i * 60}ms">
+                    <img class="chip-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23333'/%3E%3Ctext x='50' y='58' text-anchor='middle' font-size='34' fill='%23666'%3E?%3C/text%3E%3C/svg%3E">
+                    <div class="chip-info">
+                        <div class="chip-name" style="color:#777;">等待加入</div>
+                        <div class="chip-role empty">空位 ${i - players.length + 1}</div>
+                    </div>
+                </div>`;
+        }
+        strip.innerHTML = chipsHtml;
+        document.getElementById('playersCountBadge').innerText = `${players.length}/${totalSeats}`;
+
+        // —— 2. 角色选择区：角色卡片（头像 + 名字 + 简介 + 状态） ——
+        renderRolesGrid(roomPlayers, currentUserId);
+
+        // —— 3. 按钮状态 ——
+        const startBtn = document.getElementById('startGameBtn');
+        const myPlayer = players.find(p => String(p.userId) === String(currentUserId));
+        if (myPlayer && myPlayer.roleId && myPlayer.roleName) {
+            startBtn.innerText = `🎭 ${myPlayer.roleName}`;
+            startBtn.title = '点击重新选择角色';
+            startBtn.style.opacity = '0.9';
+        } else {
+            startBtn.innerText = "🎭 选择角色";
+            startBtn.title = '点击选择你的角色';
+            startBtn.style.opacity = '1';
+        }
+        startBtn.classList.remove('ai-ready-btn');
+        startBtn.disabled = false;
+        startBtn.style.cursor = 'pointer';
+        startBtn.style.display = 'inline-block';
+
+        // 房主按钮
+        const hostStartBtn = document.getElementById('hostStartGameBtn');
+        if (currentMode === 'online' && isCurrentUserHost()) {
+            const allSelected = players.length > 0 && players.every(p => p.roleId);
+            hostStartBtn.style.display = 'inline-block';
+            if (allSelected && players.length >= totalSeats) {
+                hostStartBtn.innerText = "🚀 开始游戏";
+                hostStartBtn.disabled = false;
+                hostStartBtn.style.opacity = '1';
+            } else if (players.length < totalSeats) {
+                hostStartBtn.innerText = `⏳ 等待玩家加入 (${totalSeats - players.length}个空位)`;
+                hostStartBtn.disabled = true;
+                hostStartBtn.style.opacity = '0.5';
+            } else {
+                const unselected = players.filter(p => !p.roleId).length;
+                hostStartBtn.innerText = `⏳ 等待所有玩家选择角色 (${unselected}人未选)`;
+                hostStartBtn.disabled = true;
+                hostStartBtn.style.opacity = '0.5';
+            }
+        } else {
+            hostStartBtn.style.display = 'none';
+        }
+    }
+
+    // ✅ 渲染角色卡片网格
+    const roleTakenFlashTimes = {}; // roleId -> 最近被抢占的时间戳（用于保留动画）
+    function renderRolesGrid(roomPlayers, currentUserId) {
+        const grid = document.getElementById('rolesGrid');
+        if (!availableRoles || availableRoles.length === 0) {
+            grid.innerHTML = '<div style="color:#888; text-align:center; padding:20px; grid-column:1/-1;">该剧本暂无角色配置</div>';
+            return;
+        }
+
+        // 构建 角色ID -> 选择者 映射
+        const takenByMap = {};
+        const players = roomPlayers || [];
+        players.forEach(p => {
+            if (p.roleId) {
+                takenByMap[String(p.roleId)] = p;
+            }
+        });
+
+        const now = Date.now();
+        const rolesHtml = availableRoles.map((role, idx) => {
+            const roleIdStr = String(role.roleId);
+            const takenBy = takenByMap[roleIdStr];
+            const isMine = takenBy && String(takenBy.userId) === String(currentUserId);
+            
+            let cardClass = 'pick-role-card';
+            let badgeHtml = '';
+            if (isMine) {
+                cardClass += ' selected';
+                badgeHtml = '<div class="selected-mark">✓</div>';
+            } else if (takenBy) {
+                cardClass += ' taken';
+                // 若是刚被抢（2秒内），保留抖动动画
+                if (now - (roleTakenFlashTimes[roleIdStr] || 0) < 2000) {
+                    cardClass += ' animate-taken';
+                }
+                const takerAvatar = takenBy.avatar && takenBy.avatar !== '' && !takenBy.avatar.includes('default_role.jpg')
+                    ? takenBy.avatar : getInitialsAvatar(takenBy.username);
+                badgeHtml = `
+                    <div class="taken-badge">
+                        <img class="taken-avatar" src="${takerAvatar}" onerror="this.src='${getInitialsAvatar(takenBy.username)}';">
+                        <span class="taken-text">${escapeHtml(takenBy.username)} 已选</span>
+                    </div>`;
+            }
+            
+            const roleAvatar = role.avatar && role.avatar !== '' && !role.avatar.includes('default_role.jpg')
+                ? role.avatar : getAvatarUrl(role.name, null);
+            const desc = role.background || '暂无简介';
+            
+            return `
+                <div class="${cardClass}" data-role-id="${role.roleId}" style="animation-delay:${idx * 50}ms" onclick="pickRoleCard(${role.roleId})">
+                    ${badgeHtml}
+                    <div class="role-avatar-wrap"><img src="${roleAvatar}" onerror="this.src='${getAvatarUrl(role.name, null)}';"></div>
+                    <div class="pick-role-name">${escapeHtml(role.name)}</div>
+                    <div class="pick-role-desc">${escapeHtml(desc)}</div>
+                </div>`;
+        }).join('');
+
+        grid.innerHTML = rolesHtml;
+        document.getElementById('rolesHint').innerText = 
+            availableRoles.some(r => takenByMap[String(r.roleId)]) 
+                ? '灰色卡片已被其他玩家选择，点击可选卡片即切换' 
+                : '点击角色卡片即可选择';
+    }
+
+    // ✅ 点击角色卡片：本地选中 + 动画 + 通过 WebSocket 发送
+    window.pickRoleCard = function(roleId) {
+        const card = document.querySelector(`.pick-role-card[data-role-id="${roleId}"]`);
+        if (!card || card.classList.contains('taken')) {
+            return; // 已被他人选择，忽略
+        }
+        // 已选中同一个角色，忽略重复点击
+        if (window.selectedRoleId === roleId && card.classList.contains('selected')) {
+            return;
+        }
+        const role = availableRoles.find(r => r.roleId === roleId);
+        if (!role) return;
+
+        // 本地选中动画：先清除其他选中态
+        document.querySelectorAll('.pick-role-card.selected').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        window.selectedRoleId = roleId;
+        updateConfirmButton();
+
+        // 联机模式：通过 WebSocket 发送
+        if (currentMode === 'online' && currentRoomId) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const userId = localStorage.getItem('userId');
+                socket.send(JSON.stringify({
+                    type: 'SELECT_ROLE',
+                    userId: userId,
+                    roomId: currentRoomId,
+                    roleId: roleId,
+                    roleName: role.name
+                }));
+                console.log('[角色选择] 已发送:', { userId, roomId: currentRoomId, roleId, roleName: role.name });
+            } else {
+                alert("⚠️ WebSocket 未连接，无法选择角色。请稍候片刻自动重连后重试。");
+            }
+        }
+    };
+
+    // ✅ 收到其他玩家选角广播：即时更新角色卡片（带动画）
+    function animateRoleTaken(roleId, takerUsername, takerAvatar) {
+        const roleIdStr = String(roleId);
+        roleTakenFlashTimes[roleIdStr] = Date.now(); // 记录抢占时间，供全量刷新保留动画
+        const card = document.querySelector(`.pick-role-card[data-role-id="${roleId}"]`);
+        if (!card) return;
+        if (card.classList.contains('taken')) return;
+
+        card.classList.add('taken', 'animate-taken');
+        const takerAv = takerAvatar && takerAvatar !== '' && !takerAvatar.includes('default_role.jpg')
+            ? takerAvatar : getInitialsAvatar(takerUsername || '玩家');
+        let badge = card.querySelector('.taken-badge');
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.className = 'taken-badge';
+            badge.innerHTML = `
+                <img class="taken-avatar" src="${takerAv}" onerror="this.src='${getInitialsAvatar(takerUsername || '玩家')}';">
+                <span class="taken-text">${escapeHtml(takerUsername || '玩家')} 已选</span>`;
+            card.appendChild(badge);
+        }
+        setTimeout(() => card.classList.remove('animate-taken'), 600);
+    }
+
+    // ✅ 刷新玩家列表 + 角色区（ROOM_PLAYERS 广播 / 轮询共用）
+    let lastRoomUISnapshot = '';
+    function refreshOnlineRoomUI(roomPlayers) {
+        const username = localStorage.getItem('loginUsername') || '玩家';
+        const totalSeats = currentTotalSeats || availableRoles.length || 6;
+        // 兜底：轮询失败导致列表为空时，至少把自己显示出来（联机模式下我必然已在房间）
+        let players = (roomPlayers || []).slice();
+        if (players.length === 0 && currentMode === 'online' && currentRoomId) {
+            players = [{
+                userId: localStorage.getItem('userId') || '0',
+                username: username,
+                avatar: localStorage.getItem('avatarUrl') || '',
+                roleId: window.selectedRoleId || null,
+                roleName: null
+            }];
+        }
+        // 快照对比：数据没变就不重渲染，避免每 3 秒动画重播
+        const snapshot = JSON.stringify(players);
+        const playerCount = players.length;
+        if (snapshot === lastRoomUISnapshot && document.getElementById('roomBody').style.display === 'flex') {
+            // 数据未变，仅更新人数徽章
+            document.getElementById('playersCountBadge').innerText = `${playerCount}/${totalSeats}`;
+            return;
+        }
+        lastRoomUISnapshot = snapshot;
+        renderOnlineRoomUI(totalSeats, username, playerCount, players);
+    }
 
     function renderRoomStatus(totalSeats, username, currentPlayerCount, roomPlayers) {
         const seatsContainer = document.getElementById('seatsContainer');
@@ -495,6 +820,13 @@ async function updateRoomStatus(totalSeats, username, roomId) {
 
         } else {
             document.getElementById('displayPlayerCount').innerText = `${currentPlayerCount}/${totalSeats}`;
+            
+            // ✅ 联机模式：使用高级版房间界面（玩家列表 + 角色选择区）
+            if (currentMode === 'online' && currentRoomId) {
+                currentTotalSeats = totalSeats;
+                refreshOnlineRoomUI(roomPlayers || []);
+                return;
+            }
             
             if (roomPlayers && roomPlayers.length > 0) {
                 roomPlayers.forEach((player, index) => {
@@ -616,6 +948,17 @@ async function updateRoomStatus(totalSeats, username, roomId) {
     window.openRoleModal = async function() {
         if (availableRoles.length === 0) {
             alert("该剧本尚未配置角色，无法开局！");
+            return;
+        }
+
+        // ✅ 联机模式：角色选择已内嵌在主界面，直接滚动到角色区即可
+        if (currentMode === 'online' && currentRoomId) {
+            const rolesSection = document.querySelector('.roles-section');
+            if (rolesSection) {
+                rolesSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                rolesSection.style.borderColor = '#d4b475';
+                setTimeout(() => { rolesSection.style.borderColor = '#3a3a3a'; }, 1500);
+            }
             return;
         }
 
@@ -1166,13 +1509,16 @@ async function updateRoomStatus(totalSeats, username, roomId) {
                 const username = localStorage.getItem('loginUsername');
                 
                 if (userId && currentRoomId) {
+                    // ✅ 加入房间时带上头像，让其他玩家能看到我的头像
+                    const avatar = localStorage.getItem('avatarUrl') || '';
                     socket.send(JSON.stringify({
                         type: 'JOIN_ROOM',
                         userId: userId,
                         username: username,
+                        avatar: avatar,
                         roomId: currentRoomId
                     }));
-                    console.log('[Socket] 已发送 JOIN_ROOM 消息');
+                    console.log('[Socket] 已发送 JOIN_ROOM 消息', { userId, username, avatar: avatar || '(空)' });
                 }
             };
             
@@ -1192,11 +1538,33 @@ async function updateRoomStatus(totalSeats, username, roomId) {
                         addChatMessage(msg.username, msg.content, isMe, msg.msgId);
                         break;
                     case 'ROLE_SELECT':
-                        updateRoleSelection(msg.userId, msg.roleId, msg.roleName);
+                        updateRoleSelection(msg.userId, msg.roleId, msg.roleName, msg.username, msg.avatar);
+                        break;
+                    case 'ROOM_PLAYERS':
+                        // ✅ 实时刷新玩家列表（头像+名字+已选角色）——权威数据，强制全量刷新
+                        console.log('📥 收到房间玩家列表更新:', msg);
+                        if (msg.players && Array.isArray(msg.players)) {
+                            lastRoomUISnapshot = JSON.stringify(msg.players);
+                            const username = localStorage.getItem('loginUsername') || '玩家';
+                            renderOnlineRoomUI(
+                                currentTotalSeats || availableRoles.length || 6,
+                                username,
+                                msg.players.length,
+                                msg.players
+                            );
+                        }
                         break;
                     case 'ROLE_SELECT_RESULT':
                         if (!msg.success) {
                             alert("❌ " + msg.message);
+                            // ✅ 选择被拒绝：清除本地选中态，等待服务器权威状态刷新
+                            window.selectedRoleId = null;
+                            document.querySelectorAll('.pick-role-card.selected').forEach(c => c.classList.remove('selected'));
+                            updateConfirmButton();
+                            if (currentMode === 'online' && currentRoomId) {
+                                const username = localStorage.getItem('loginUsername') || '玩家';
+                                updateRoomStatus(6, username, currentRoomId);
+                            }
                         }
                         break;
                     case 'PLAYER_JOIN':
@@ -1313,12 +1681,18 @@ async function updateRoomStatus(totalSeats, username, roomId) {
     }
 
     // ✅ 更新角色选择状态
-    function updateRoleSelection(userId, roleId, roleName) {
+    function updateRoleSelection(userId, roleId, roleName, takerUsername, takerAvatar) {
         console.log('[角色选择] 玩家', userId, '选择了角色', roleName);
+        const currentUserId = localStorage.getItem('userId');
+        const isMe = String(userId) === String(currentUserId);
+        
+        // ✅ 其他玩家选择角色 → 播放"该角色已被选择"动画
+        if (!isMe) {
+            animateRoleTaken(roleId, takerUsername, takerAvatar);
+        }
         
         // ✅ 检查是否是当前用户
-        const currentUserId = localStorage.getItem('userId');
-        if (String(userId) === String(currentUserId)) {
+        if (isMe) {
             // ✅ 更新当前用户的按钮
             const startBtn = document.getElementById('startGameBtn');
             const hostStartBtn = document.getElementById('hostStartGameBtn');

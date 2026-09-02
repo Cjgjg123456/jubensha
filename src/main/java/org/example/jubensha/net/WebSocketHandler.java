@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 @Component
 public class WebSocketHandler extends TextWebSocketHandler {
@@ -164,6 +165,12 @@ public class WebSocketHandler extends TextWebSocketHandler {
                            "status", room.getStatus(), "gameId", room.getGameId(),
                            "playerCount", room.getPlayerCount(), "maxPlayers", room.getMaxPlayers()));
             } else {
+                // ✅ 用户已在房间中：若本次带上了头像且之前为空，则补全头像
+                boolean hasNewAvatar = avatar != null && !avatar.isBlank();
+                boolean oldAvatarMissing = existingPlayer.getAvatar() == null || existingPlayer.getAvatar().isEmpty();
+                if (hasNewAvatar && oldAvatarMissing) {
+                    existingPlayer.setAvatar(avatar);
+                }
                 log("INFO", "JOIN_ROOM", "用户已在房间中",
                     Map.of("userId", userId, "username", username, "roomId", roomId,
                            "status", room.getStatus(), "gameId", room.getGameId()));
@@ -174,10 +181,44 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 Map.of("roomId", roomId, "players", room.getPlayers().stream()
                     .map(p -> p.getUsername() + "(" + p.getUserId() + ")")
                     .toList()));
+
+            // ✅ 广播房间最新玩家列表给房间内所有成员（含刚加入者），
+            //    让每个玩家都能实时看到"谁在房间里"以及各自已选角色
+            broadcastRoomPlayers(roomId);
         } else {
             log("WARN", "JOIN_ROOM", "房间不存在", 
                 Map.of("roomId", roomId));
         }
+    }
+
+    /**
+     * 广播房间玩家列表（含头像、已选角色）给房间内所有 WebSocket 会话
+     */
+    private void broadcastRoomPlayers(String roomId) {
+        Room room = gameServer.getRoom(roomId);
+        if (room == null) {
+            return;
+        }
+
+        List<Map<String, Object>> playerList = room.getPlayers().stream()
+                .map(p -> {
+                    Map<String, Object> playerMap = new LinkedHashMap<>();
+                    playerMap.put("userId", p.getUserId());
+                    playerMap.put("username", p.getUsername());
+                    playerMap.put("avatar", p.getAvatar());
+                    playerMap.put("ready", p.isReady());
+                    playerMap.put("roleId", p.getRoleId());
+                    playerMap.put("roleName", p.getRoleName());
+                    return playerMap;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> msg = new LinkedHashMap<>();
+        msg.put("type", "ROOM_PLAYERS");
+        msg.put("roomId", roomId);
+        msg.put("players", playerList);
+        msg.put("timestamp", getTimestamp());
+        broadcastToRoom(roomId, msg);
     }
 
     private void handleSelectRole(WebSocketSession session, Map<String, Object> msg) {
@@ -344,6 +385,15 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 broadcastMsg.put("roomId", roomId);
                 broadcastMsg.put("roleId", roleIdStr);
                 broadcastMsg.put("roleName", roleName);
+                // ✅ 带上选择者的用户名与头像，前端可实时展示"谁选了该角色"
+                Player selectingPlayer = player != null ? player : room.getPlayer(userId);
+                if (selectingPlayer != null) {
+                    broadcastMsg.put("username", selectingPlayer.getUsername() != null ? selectingPlayer.getUsername() : "");
+                    broadcastMsg.put("avatar", selectingPlayer.getAvatar() != null ? selectingPlayer.getAvatar() : "");
+                } else {
+                    broadcastMsg.put("username", "");
+                    broadcastMsg.put("avatar", "");
+                }
                 if (previousRoleId != null) {
                     broadcastMsg.put("previousRoleId", previousRoleId);
                 }
@@ -368,6 +418,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 logMap10.put("broadcastTime", System.currentTimeMillis() - broadcastStartTime);
                 logMap10.put("broadcastCompletedAt", System.currentTimeMillis());
                 log("DEBUG", "SELECT_ROLE_BROADCAST_COMPLETE", "广播完成", logMap10);
+
+                // ✅ 广播最新玩家列表（含角色状态），让所有成员的头像/角色实时同步
+                broadcastRoomPlayers(roomId);
 
                 // ✅ 发送成功响应
                 Map<String, Object> responseMap = new LinkedHashMap<>();
@@ -984,6 +1037,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     aiSelectMsg.put("roomId", roomId);
                     aiSelectMsg.put("roleId", roleId);
                     aiSelectMsg.put("roleName", roleName);
+                    // ✅ 带上 AI 玩家名字与头像，前端可展示"谁选了该角色"
+                    aiSelectMsg.put("username", ai.getUsername() != null ? ai.getUsername() : "AI玩家");
+                    aiSelectMsg.put("avatar", ai.getAvatar() != null ? ai.getAvatar() : "");
 
                     broadcastToRoom(roomId, aiSelectMsg);
 
@@ -993,6 +1049,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 }
             }
         }
+
+        // ✅ AI选角完成后广播最新玩家列表，前端实时同步角色状态
+        broadcastRoomPlayers(roomId);
     }
 
     /**
@@ -1046,6 +1105,11 @@ public class WebSocketHandler extends TextWebSocketHandler {
         logMap.put("closeCode", closeCode);
         logMap.put("closeReason", closeReason);
         log("INFO", "CONNECTION_CLOSED", "连接关闭", logMap);
+
+        // ✅ 玩家断开后广播最新玩家列表，让房间内其他人实时看到成员变化
+        if (roomId != null) {
+            broadcastRoomPlayers(roomId);
+        }
     }
 
     @Override

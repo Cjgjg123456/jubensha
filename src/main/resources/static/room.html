@@ -597,11 +597,13 @@
         
         if (selectedMode === 'online') {
             try {
+                // ✅ 创建房间时带上头像，让其他玩家能看到房主头像
+                const avatar = localStorage.getItem('avatarUrl') || '';
                 // 联机模式：调用API创建真实房间
                 const createRes = await fetch('/api/online/room/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `userId=${encodeURIComponent(userId)}&username=${encodeURIComponent(username)}&scriptId=${currentSelectedScriptId}&roomName=${encodeURIComponent(roomName)}`
+                    body: `userId=${encodeURIComponent(userId)}&username=${encodeURIComponent(username)}&scriptId=${currentSelectedScriptId}&roomName=${encodeURIComponent(roomName)}&avatar=${encodeURIComponent(avatar)}`
                 }).then(r => r.json());
                 
                 if (createRes.success && createRes.data) {
