@@ -74,6 +74,50 @@
 
         .btn-ai-warning { background:rgba(255,152,0,.15); border:1px solid rgba(255,152,0,.4); color:#ffb74d; }
 
+        /* ====== 创作体验增强：自适应文本域 / 折叠幕 / 字数 / 设定卡 / 版本历史 ====== */
+        /* 文本域随内容增高 */
+        .form-input.grow { resize: none; overflow: hidden; min-height: 44px; transition: height .05s; }
+        /* 幕块折叠头部 */
+        .act-block { margin-bottom: 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; overflow: hidden; background: rgba(0,0,0,.18); }
+        .act-block .act-head { display:flex; align-items:center; gap:8px; padding:8px 12px; cursor:pointer; user-select:none; color:#ccc; font-weight:bold; transition:.2s; }
+        .act-block .act-head:hover { background: rgba(255,255,255,.05); }
+        .act-block .act-head .act-arrow { margin-left:auto; font-size:11px; opacity:.6; transition: transform .3s; }
+        .act-block.collapsed .act-head .act-arrow { transform: rotate(-90deg); }
+        .act-block.collapsed .act-body { display:none; }
+        .act-block .act-body { padding: 0 12px 12px; }
+        .word-count { margin-left:auto; font-size:11px; color:#777; font-weight:normal; }
+        /* 设定卡 */
+        .meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .meta-grid .full { grid-column:1 / -1; }
+        .meta-label { display:block; font-size:12px; color:#ffcc80; margin-bottom:5px; }
+        .meta-input { width:100%; background:rgba(0,0,0,.35); border:1px solid rgba(255,200,120,.25); color:#fff; padding:9px 12px; border-radius:8px; outline:none; font-size:13px; }
+        .meta-input:focus { border-color:#ffb74d; }
+        .meta-input.grow { resize:none; overflow:hidden; }
+        .section-collapsible .section-title { cursor:pointer; user-select:none; }
+        .section-collapsible .section-title:hover { opacity:.85; }
+        .section-collapsible .sec-arrow { font-size:12px; margin-left:8px; transition:transform .3s; }
+        .section-collapsible.closed .sec-arrow { transform: rotate(-90deg); }
+        .section-collapsible.closed .sec-body { display:none; }
+        /* AI 生成历史 */
+        .ai-history { margin-top:12px; border-top:1px solid rgba(255,255,255,.08); padding-top:10px; display:none; }
+        .ai-history .h-list { max-height:140px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+        .ai-history .h-item { display:flex; align-items:center; gap:8px; background:rgba(155,77,255,.08); border:1px solid rgba(155,77,255,.2); border-radius:8px; padding:6px 10px; font-size:12px; color:#ccc; cursor:pointer; transition:.2s; }
+        .ai-history .h-item:hover { background:rgba(155,77,255,.16); }
+        .ai-history .h-item .h-tag { flex-shrink:0; font-size:10px; background:rgba(155,77,255,.25); color:#d0a0ff; padding:2px 6px; border-radius:4px; }
+        .ai-history .h-item .h-time { margin-left:auto; flex-shrink:0; font-size:10px; color:#888; }
+        /* 版本历史弹窗 */
+        .ver-list { display:flex; flex-direction:column; gap:10px; max-height:60vh; overflow-y:auto; }
+        .ver-item { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:12px; }
+        .ver-item .v-info { flex:1; min-width:0; }
+        .ver-item .v-time { font-size:12px; color:#aaa; }
+        .ver-item .v-actions { display:flex; gap:8px; flex-shrink:0; }
+        .btn-sm { padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:transparent; color:#ccc; cursor:pointer; font-size:12px; transition:.2s; }
+        .btn-sm:hover { background:rgba(255,255,255,.1); color:#fff; }
+        .btn-sm.warn { border-color:rgba(255,152,0,.5); color:#ffb74d; }
+        .btn-sm.warn:hover { background:rgba(255,152,0,.15); }
+        /* 版本历史入口（header） */
+        .top-actions { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:18px; }
+
         /* ====== 草稿恢复横幅 ====== */
         .draft-banner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 950; background: rgba(30,30,55,.96); border:1px solid #9b4dff;
             color:#eee; padding: 12px 20px; border-radius: 14px; font-size: 14px; display: flex; gap: 16px; align-items: center; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
@@ -94,6 +138,13 @@
     </div>
 </div>
 <div class="main-content">
+    <div class="top-actions">
+        <div style="font-size:22px; font-weight:bold; color:#ff6600; letter-spacing:1px;">✍️ 剧本创作者空间</div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn-sm" onclick="toggleAllActs()" title="展开/收起所有幕的正文编辑框">📂 全部幕折叠</button>
+            <button class="btn-sm" id="verHistoryBtn" onclick="openVerHistory()" style="display:none;">📜 版本历史</button>
+        </div>
+    </div>
     <div class="form-section">
         <div class="section-title">1. 剧本全局设定</div>
         <div style="display:grid; grid-template-columns:120px 1fr; gap:30px;">
@@ -129,6 +180,39 @@
                 </div>
 
                 <div style="grid-column: span 4;"><label>简介<button type="button" class="ai-mini" title="AI 帮你写/润色剧本简介" onclick="bindAiTarget('intro', -1, -1, '剧本简介')">✨ AI</button></label><textarea id="scriptIntro" class="form-input" style="height:60px;" oninput="scheduleDraftSave();"></textarea></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section section-collapsible" id="metaSection">
+        <div class="section-title" onclick="toggleSection('metaSection')">📌 故事设定卡（强烈建议填写，AI 会照此设定创作与审稿）<span class="sec-arrow">▾</span></div>
+        <div class="sec-body">
+            <p style="font-size:13px; color:#aaa; margin-bottom:14px; line-height:1.6;">
+                填写的设定会随草稿/发布保存，并在 AI 续写、润色、逻辑建议、角色视角生成时自动注入，
+                让 AI"照设定办事"而不是自己猜。真凶与诡计请尽量写清，审稿才查得准。
+            </p>
+            <div class="meta-grid">
+                <div>
+                    <label class="meta-label">🎯 真凶（最终真凶角色）</label>
+                    <input id="metaKiller" class="meta-input" list="killerRoleList" placeholder="例：沈木榫（可用角色名或描述）" oninput="scheduleDraftSave();">
+                    <datalist id="killerRoleList"></datalist>
+                </div>
+                <div>
+                    <label class="meta-label">🔑 核心诡计</label>
+                    <input id="metaTrick" class="meta-input" placeholder="例：利用冰雕延时 + 密室机关，伪造不在场证明" oninput="scheduleDraftSave();">
+                </div>
+                <div class="full">
+                    <label class="meta-label">🧩 人物关系</label>
+                    <textarea id="metaRelations" class="meta-input grow" rows="2" placeholder="例：沈木榫是温知夏失散多年的哥哥；苏清砚与温知夏是情敌…" oninput="autosize(this); scheduleDraftSave();"></textarea>
+                </div>
+                <div class="full">
+                    <label class="meta-label">⏱️ 关键时间线（可写多条，每行一条）</label>
+                    <textarea id="metaTimeline" class="meta-input grow" rows="3" placeholder="例：20:00 沈木榫进入书房&#10;20:15 温知夏看见苏清砚从走廊尽头离开&#10;20:30 案发…" oninput="autosize(this); scheduleDraftSave();"></textarea>
+                </div>
+                <div class="full">
+                    <label class="meta-label">📝 其他关键设定 / 伏笔要求</label>
+                    <textarea id="metaOther" class="meta-input grow" rows="2" placeholder="例：玩家在第三幕应能通过账本发现破绽；结局想开放双真凶…" oninput="autosize(this); scheduleDraftSave();"></textarea>
+                </div>
             </div>
         </div>
     </div>
@@ -206,6 +290,10 @@
                 <button class="btn-ai-apply" onclick="applyAiToAllRoles()">🎭 写入全体角色当前幕</button>
                 <button class="btn-ai-apply" onclick="applyAiAsClues()">🔍 解析为线索卡添加</button>
             </div>
+            <div class="ai-history" id="aiHistoryBox">
+                <div style="font-size:12px; color:#d0a0ff; margin-bottom:6px;">🕘 本次会话生成历史（点击回看）</div>
+                <div class="h-list" id="aiHistoryList"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -215,6 +303,18 @@
     <span>💾 检测到上次未发布的创作草稿，是否恢复？</span>
     <button class="ok" onclick="restoreDraft()">恢复草稿</button>
     <button class="no" onclick="discardDraft()">放弃</button>
+</div>
+
+<!-- 版本历史弹窗 -->
+<div class="modal-overlay" id="verModal" style="z-index: 1200;">
+    <div class="modal-content" style="width: 640px; border-color: #b89758; box-shadow: 0 0 30px rgba(184,151,88,.25);">
+        <div class="modal-header">
+            <div class="modal-title" style="color:#d4b475;">📜 剧本版本历史（本地保存）</div>
+            <button class="close-btn" onclick="hideVerModal()">×</button>
+        </div>
+        <p style="color:#aaa; font-size:13px; margin-bottom:14px;">每次"确认并全网发布"时会自动记录一份完整快照。可随时恢复到某一版本继续编辑（需重新发布才会生效于线上）。</p>
+        <div class="ver-list" id="verHistoryList"></div>
+    </div>
 </div>
 
 <div class="modal-overlay" id="seriesModal">
@@ -269,6 +369,77 @@
     let aiResultText = '';
     let aiTypingTimer = null;
     const DRAFT_KEY = 'jubensha_creator_draft_v1';
+    const VER_KEY = 'jubensha_creator_versions_v1';
+    let aiHistory = [];          // 本次会话的 AI 生成历史
+    const foldedActs = new Set(); // 折叠的幕（渲染时按角色视角分开更合理，简单起见共享集合）
+
+    // —— 展开/收起工具 ——
+    function toggleActBlock(headEl) {
+        const block = headEl.closest('.act-block');
+        if (!block) return;
+        const act = parseInt(block.dataset.act || '-1');
+        block.classList.toggle('collapsed');
+        if (act >= 0) {
+            if (block.classList.contains('collapsed')) foldedActs.add(act); else foldedActs.delete(act);
+        }
+    }
+    function toggleAllActs() {
+        const blocks = document.querySelectorAll('#roleEditor .act-block');
+        const anyOpen = [...blocks].some(b => !b.classList.contains('collapsed'));
+        blocks.forEach(b => b.classList.toggle('collapsed', anyOpen));
+        const actsNow = [...blocks].filter(b => b.classList.contains('collapsed')).map(b => parseInt(b.dataset.act));
+        // 同步折叠状态集合
+        document.querySelectorAll('#roleEditor .act-block').forEach(b => { const a = parseInt(b.dataset.act); if (anyOpen) foldedActs.add(a); else foldedActs.delete(a); });
+        return anyOpen;
+    }
+    function toggleSection(secId) {
+        const sec = document.getElementById(secId);
+        if (sec) sec.classList.toggle('closed');
+    }
+
+    // —— textarea 自适应增高 ——
+    function autosize(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight + 4, 480) + 'px';
+        if (el.scrollHeight + 4 < 44) el.style.height = '44px';
+    }
+    function autosizeAll(root) {
+        (root || document).querySelectorAll('textarea.grow, textarea.form-input.grow').forEach(autosize);
+    }
+
+    // —— 字数统计（actIdx: -1 = 公共总览按需）——
+    function updateWordCount(el, actIdx, kind) {
+        const block = el ? el.closest('.act-block') : null;
+        const wc = block ? block.querySelector('.word-count') : null;
+        if (wc) wc.textContent = el.value.replace(/\s/g, '').length + ' 字';
+    }
+
+    // —— 故事设定卡读写 ——
+    function readMeta() {
+        const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+        return {
+            killer: g('metaKiller'), trick: g('metaTrick'),
+            relations: g('metaRelations'), timeline: g('metaTimeline'), other: g('metaOther')
+        };
+    }
+    function writeMeta(m) {
+        m = m || {};
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+        set('metaKiller', m.killer); set('metaTrick', m.trick);
+        set('metaRelations', m.relations); set('metaTimeline', m.timeline); set('metaOther', m.other);
+        autosizeAll(document.getElementById('metaSection'));
+    }
+    function metaToText() {
+        const m = readMeta();
+        const parts = [];
+        if (m.killer) parts.push('真凶：' + m.killer);
+        if (m.trick) parts.push('核心诡计：' + m.trick);
+        if (m.relations) parts.push('人物关系：' + m.relations);
+        if (m.timeline) parts.push('关键时间线：\n' + m.timeline);
+        if (m.other) parts.push('其他设定：' + m.other);
+        return parts.join('\n');
+    }
 
     // —— HTML 安全转义：AI 文本/用户文本回显到 input/textarea 前必须转义 ——
     function escAttr(s) {
@@ -367,6 +538,9 @@
             ctx.currentEnding = endings[roleIdx].title || '';
         } else if (targetType === 'intro') ctx.currentContent = intro;
         else if (targetType === 'truth') ctx.currentContent = truth;
+        // 注入故事设定卡（真凶/诡计/关系/时间线/其他）
+        const metaText = metaToText();
+        if (metaText) ctx.additional.push('【创作者设定卡】\n' + metaText);
         return ctx;
     }
 
@@ -392,6 +566,11 @@
 
             if (res.success && res.data && res.data.text) {
                 aiResultText = res.data.text;
+                // 记录生成历史
+                const targetLabel = document.getElementById('aiTargetChip').innerText.replace('🎯 目标：', '');
+                aiHistory.unshift({ task: aiState.task, label: targetLabel, text: aiResultText, time: Date.now() });
+                if (aiHistory.length > 20) aiHistory.length = 20;
+                renderAiHistory();
                 typewriterEffect('aiOutput', aiResultText);
                 hint.innerText = '✅ 完成！检查内容后点击下方按钮写入剧本。';
                 updateApplyRowVisibility();
@@ -435,6 +614,38 @@
         tick();
     }
     function stopAiTyping() { if (aiTypingTimer) { clearTimeout(aiTypingTimer); aiTypingTimer = null; } }
+
+    // —— 生成历史 ——
+    const AI_TASK_LABEL = { continue: '续写', polish: '润色', suggest: '逻辑建议', rolesView: '全体视角', clues: '线索', custom: '自定义' };
+    function renderAiHistory() {
+        const box = document.getElementById('aiHistoryBox');
+        const list = document.getElementById('aiHistoryList');
+        if (!box || !list) return;
+        if (!aiHistory.length) { box.style.display = 'none'; return; }
+        box.style.display = 'block';
+        list.innerHTML = aiHistory.map((h, i) => {
+            const preview = (h.text || '').replace(/\s+/g, ' ').slice(0, 40);
+            const t = new Date(h.time).toLocaleTimeString('zh-CN', { hour12: false });
+            return `<div class="h-item" title="${escAttr(preview)}" onclick="loadAiHistoryItem(${i})">
+                <span class="h-tag">${AI_TASK_LABEL[h.task] || h.task}</span>
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:300px;">${escHtml(preview)}…</span>
+                <span class="h-time">${t}</span>
+            </div>`;
+        }).join('');
+    }
+    function loadAiHistoryItem(i) {
+        const h = aiHistory[i];
+        if (!h) return;
+        stopAiTyping();
+        aiResultText = h.text;
+        const el = document.getElementById('aiOutput');
+        el.innerHTML = '';
+        el.textContent = h.text;
+        el.scrollTop = el.scrollHeight;
+        const chip = document.getElementById('aiTargetChip');
+        chip.innerText = '🎯 目标：' + h.label + '（历史回看）';
+        updateApplyRowVisibility();
+    }
 
     // —— ⏩ 立即显示全文（跳过打字动画）——
     function showAiFullText() {
@@ -494,12 +705,13 @@
     }
     // —— 写入目标 ——
     function writeAiToTarget(text, append) {
+        let ok = false;
         switch (aiState.targetType) {
             case 'pub':
                 if (aiState.actIdx >= 0 && aiState.actIdx < actsPublicContent.length) {
                     actsPublicContent[aiState.actIdx] = append ? (actsPublicContent[aiState.actIdx] + '\n\n' + text) : text;
                     render();
-                    return true;
+                    ok = true;
                 }
                 break;
             case 'role':
@@ -508,7 +720,7 @@
                     if (aiState.actIdx >= 0 && aiState.actIdx < roles[aiState.roleIdx].actsContent.length) {
                         roles[aiState.roleIdx].actsContent[aiState.actIdx] = append ? (roles[aiState.roleIdx].actsContent[aiState.actIdx] + '\n\n' + text) : text;
                         render();
-                        return true;
+                        ok = true;
                     }
                 }
                 break;
@@ -516,25 +728,62 @@
                 if (aiState.roleIdx >= 0 && roles[aiState.roleIdx]) {
                     roles[aiState.roleIdx].intro = append ? ((roles[aiState.roleIdx].intro || '') + '\n' + text) : text;
                     render();
-                    return true;
+                    ok = true;
                 }
                 break;
             case 'intro':
                 document.getElementById('scriptIntro').value = append ? document.getElementById('scriptIntro').value + '\n\n' + text : text;
-                return true;
+                ok = true;
+                break;
             case 'truth':
                 document.getElementById('scriptTruth').value = append ? document.getElementById('scriptTruth').value + '\n\n' + text : text;
-                return true;
+                ok = true;
+                break;
             case 'ending':
                 if (aiState.roleIdx >= 0 && endings[aiState.roleIdx]) {
                     endings[aiState.roleIdx].content = append ? (endings[aiState.roleIdx].content + '\n\n' + text) : text;
                     renderEndings();
-                    return true;
+                    ok = true;
                 }
                 break;
         }
+        if (ok) { flashAiTarget(aiState.targetType, aiState.roleIdx, aiState.actIdx); return true; }
         alert('⚠️ 无法定位目标文本位置，请重新选择目标后重试。');
         return false;
+    }
+
+    // —— AI 写入后定位并高亮目标幕块（不打断继续编辑）——
+    function flashAiTarget(type, roleIdx, actIdx) {
+        let block = null;
+        if (type === 'pub' || type === 'role') {
+            // 切到目标角色视角
+            if (type === 'role' && roleIdx >= 0 && currentRoleIdx !== roleIdx) { currentRoleIdx = roleIdx; render(); }
+            if (type === 'pub' && currentRoleIdx !== -1) { currentRoleIdx = -1; render(); }
+            const blocks = document.querySelectorAll('#roleEditor .act-block');
+            if (blocks.length === 0) render(); // 兜底
+            const target = document.querySelector(`#roleEditor .act-block[data-act="${actIdx}"]`);
+            if (target) {
+                target.classList.remove('collapsed'); foldedActs.delete(actIdx);
+                const ta = target.querySelector('textarea');
+                if (ta) { autosize(ta); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+                block = target;
+            }
+        } else if (type === 'ending') {
+            const ta = document.querySelector('#endingContainer textarea');
+            if (ta) { autosize(ta); block = ta.closest('.clue-card'); }
+        } else if (type === 'roleIntro') {
+            if (roleIdx >= 0 && currentRoleIdx !== roleIdx) { currentRoleIdx = roleIdx; render(); }
+            const inputs = document.querySelectorAll('#roleEditor input');
+            block = inputs.length > 1 ? inputs[1] : null; // 人设输入框
+        } else if (type === 'intro') block = document.getElementById('scriptIntro');
+        else if (type === 'truth') block = document.getElementById('scriptTruth');
+
+        if (block) {
+            block.style.transition = 'box-shadow .6s';
+            block.style.boxShadow = '0 0 0 3px rgba(155,77,255,.55)';
+            block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => { block.style.boxShadow = ''; }, 1800);
+        }
     }
 
     // —— 🎭 解析全体角色视角并写入 ——
@@ -835,6 +1084,7 @@
             ` : ''}
         `;
         document.getElementById('clueContainer').appendChild(div);
+        autosizeAll(document.getElementById('clueContainer'));
     }
 
     function addClue() {
@@ -922,6 +1172,9 @@
             btn.innerText = r.name; btn.onclick = () => { currentRoleIdx = i; render(); };
             nav.appendChild(btn);
         });
+        // 刷新真凶候选角色
+        const dl = document.getElementById('killerRoleList');
+        if (dl) dl.innerHTML = roles.map(r => `<option value="${escAttr(r.name)}">`).join('');
 
         if (currentRoleIdx === -1) {
             let pubHtml = `
@@ -931,10 +1184,18 @@
                 </div>
             `;
             acts.forEach((a, i) => {
+                const pubTxt = actsPublicContent[i] || '';
                 pubHtml += `
-                    <div style="margin-bottom:15px;">
-                        <label style="color:#ff9900; font-weight:bold;">${escHtml(a)}<button type="button" class="ai-mini" title="AI 续写/润色/建议这段公共剧情" onclick="bindAiTarget('pub', -1, ${i}, '公共剧情 · 第${i+1}幕')">✨ AI</button></label>
-                        <textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="例如：1991年，一场大火烧毁了疗养院..." oninput="actsPublicContent[${i}]=this.value; scheduleDraftSave();">${escHtml(actsPublicContent[i]||'')}</textarea>
+                    <div class="act-block ${foldedActs.has(i) ? 'collapsed' : ''}" data-act="${i}">
+                        <div class="act-head" onclick="toggleActBlock(this)">
+                            <span style="color:#ff9900;">${escHtml(a)}</span>
+                            <button type="button" class="ai-mini" style="font-size:12px; padding:1px 7px;" title="AI 续写/润色/建议这段公共剧情" onclick="event.stopPropagation(); bindAiTarget('pub', -1, ${i}, '公共剧情 · 第${i+1}幕')">✨ AI</button>
+                            <span class="word-count">${pubTxt.replace(/\s/g,'').length} 字</span>
+                            <span class="act-arrow">▾</span>
+                        </div>
+                        <div class="act-body">
+                            <textarea class="form-input grow" style="height:auto;" placeholder="例如：1991年，一场大火烧毁了疗养院..." oninput="actsPublicContent[${i}]=this.value; autosize(this); updateWordCount(this,${i},'pub'); scheduleDraftSave();">${escHtml(pubTxt)}</textarea>
+                        </div>
                     </div>
                 `;
             });
@@ -959,15 +1220,32 @@
                     <h4 style="color:#00e5ff; margin-bottom:5px;">🤫 角色专属机密剧情</h4>
                     <p style="font-size:13px; color:#aaa;">在此填写该角色在每一幕中的独立视角、记忆或隐藏线索。只有选择该角色的玩家可见。</p>
                 </div>
-                ${acts.map((a, i) => `<div style="margin-bottom:15px;"><label style="color:#00e5ff; font-weight:bold;">${escHtml(a)}<button type="button" class="ai-mini" style="border-color:rgba(0,229,255,0.4); color:#4dd0e1;" title="AI 续写/润色这段角色专属剧情" onclick="bindAiTarget('role', ${currentRoleIdx}, ${i}, null)">✨ AI</button></label><textarea class="form-input" style="height:120px; margin-top:8px;" placeholder="填写该角色的专属机密剧情..." oninput="roles[${currentRoleIdx}].actsContent[${i}]=this.value; scheduleDraftSave();">${escHtml(cur.actsContent[i]||'')}</textarea></div>`).join('')}
+                ${acts.map((a, i) => {
+                    const actTxt = cur.actsContent[i] || '';
+                    return `<div class="act-block ${foldedActs.has(i) ? 'collapsed' : ''}" data-act="${i}">
+                        <div class="act-head" onclick="toggleActBlock(this)">
+                            <span style="color:#00e5ff;">${escHtml(a)}</span>
+                            <button type="button" class="ai-mini" style="font-size:12px; padding:1px 7px; border-color:rgba(0,229,255,0.4); color:#4dd0e1;" title="AI 续写/润色这段角色专属剧情" onclick="event.stopPropagation(); bindAiTarget('role', ${currentRoleIdx}, ${i}, null)">✨ AI</button>
+                            <span class="word-count">${actTxt.replace(/\s/g,'').length} 字</span>
+                            <span class="act-arrow">▾</span>
+                        </div>
+                        <div class="act-body">
+                            <textarea class="form-input grow" style="height:auto;" placeholder="填写该角色的专属机密剧情..." oninput="roles[${currentRoleIdx}].actsContent[${i}]=this.value; autosize(this); updateWordCount(this,${i},'role'); scheduleDraftSave();">${escHtml(actTxt)}</textarea>
+                        </div>
+                    </div>`;
+                }).join('')}
                 <div id="clueContainer"></div><button class="btn" style="width:100%; background:transparent; border:1px dashed #666; color:#aaa" onclick="addClue()">+ 添加线索卡</button>
             `;
             clues.forEach((c, i) => { if(c.isPublic == 1 || c.roleIndex == currentRoleIdx) renderClue(c, i); });
         }
+        autosizeAll(editor);
     }
 
     function updateNavName() {
         document.querySelectorAll('.nav-item')[currentRoleIdx + 1].innerText = roles[currentRoleIdx].name;
+        // 同步真凶 datalist
+        const dl = document.getElementById('killerRoleList');
+        if (dl) dl.innerHTML = roles.map(r => `<option value="${escAttr(r.name)}">`).join('');
         renderEndings();
     }
 
@@ -995,6 +1273,7 @@
             `;
             container.appendChild(div);
         });
+        autosizeAll(container);
     }
 
     function addEnding() {
@@ -1021,6 +1300,7 @@
                 seriesId: document.getElementById('scriptSeries').value,
                 coverUrl: currentCoverUrl,
                 bgmUrl: currentBgmUrl,
+                meta: readMeta(),
                 acts: acts, actsPublicContent: actsPublicContent,
                 roles: roles, clues: clues, endings: endings, architectures: architectures
             };
@@ -1071,13 +1351,95 @@
         if (d.clues) clues = d.clues;
         if (d.endings) endings = d.endings;
         if (d.architectures) architectures = d.architectures;
-        render(); renderEndings(); renderArch();
+        if (d.meta) writeMeta(d.meta);
+        render(); renderEndings(); renderArch(); autosizeAll();
         alert('💾 已恢复草稿（保存于 ' + new Date(d.t).toLocaleString() + '）');
     }
     function discardDraft() {
         hideDraftBanner();
         localStorage.removeItem(DRAFT_KEY);
     }
+
+    // ==================== 📜 版本历史（发布快照，本地保存） ====================
+    function loadVersions(scriptId) {
+        try {
+            const all = JSON.parse(localStorage.getItem(VER_KEY) || '{}');
+            return (scriptId && all[scriptId]) ? all[scriptId] : [];
+        } catch (e) { return []; }
+    }
+    function pushVersion(scriptId, snapshot) {
+        try {
+            const all = JSON.parse(localStorage.getItem(VER_KEY) || '{}');
+            if (!all[scriptId]) all[scriptId] = [];
+            all[scriptId].unshift(snapshot);
+            if (all[scriptId].length > 10) all[scriptId].length = 10;
+            localStorage.setItem(VER_KEY, JSON.stringify(all));
+        } catch (e) { console.warn('版本保存失败', e); }
+    }
+    function currentSnapshot() {
+        return {
+            t: Date.now(),
+            title: document.getElementById('scriptTitle').value,
+            intro: document.getElementById('scriptIntro').value,
+            truth: document.getElementById('scriptTruth') ? document.getElementById('scriptTruth').value : '',
+            count: document.getElementById('scriptCount').value,
+            diff: document.getElementById('scriptDiff').value,
+            seriesId: document.getElementById('scriptSeries').value,
+            coverUrl: currentCoverUrl,
+            bgmUrl: currentBgmUrl,
+            meta: readMeta(),
+            acts: acts, actsPublicContent: actsPublicContent,
+            roles: roles, clues: clues, endings: endings, architectures: architectures
+        };
+    }
+    // 把某版本快照恢复到当前表单（作为可继续编辑的草稿）
+    function restoreVersion(scriptId, idx) {
+        const v = loadVersions(scriptId)[idx];
+        if (!v) return;
+        if (!confirm('将把当前编辑内容替换为版本 ' + new Date(v.t).toLocaleString() + ' 的内容。\n当前未保存的改动会被覆盖，确定？')) return;
+        hideVerModal();
+        writeMeta(v.meta);
+        document.getElementById('scriptTitle').value = v.title;
+        document.getElementById('scriptIntro').value = v.intro || '';
+        if (document.getElementById('scriptTruth')) document.getElementById('scriptTruth').value = v.truth || '';
+        document.getElementById('scriptCount').value = v.count;
+        document.getElementById('scriptDiff').value = v.diff;
+        document.getElementById('scriptSeries').value = v.seriesId || '0';
+        if (v.coverUrl) { currentCoverUrl = v.coverUrl; const cv = document.getElementById('coverPreview'); if (cv) { cv.src = v.coverUrl; cv.style.display = 'block'; const uh = document.getElementById('uploadHint'); if (uh) uh.style.display = 'none'; } }
+        if (v.bgmUrl) { currentBgmUrl = v.bgmUrl; const b = document.getElementById('scriptBgmDisplay'); if (b) b.value = '✅ 音乐已就绪'; }
+        acts = v.acts || ['第一幕'];
+        actsPublicContent = v.actsPublicContent || acts.map(() => '');
+        roles = (v.roles || []).map(r => ({
+            name: r.name || '待定角色', avatar: r.avatar || '', intro: r.intro || '',
+            actsContent: (r.actsContent && r.actsContent.length === acts.length) ? r.actsContent : acts.map(() => '')
+        }));
+        clues = v.clues || []; endings = v.endings || []; architectures = v.architectures || [];
+        render(); renderEndings(); renderArch(); autosizeAll();
+        scheduleDraftSave();
+        alert('✅ 已恢复版本 ' + new Date(v.t).toLocaleString() + '。可继续编辑后再次发布。');
+    }
+    function openVerHistory() {
+        if (!editId) { alert('保存并发布一次后，才能查看历史版本。'); return; }
+        const vers = loadVersions(parseInt(editId));
+        const list = document.getElementById('verHistoryList');
+        if (!list) return;
+        list.innerHTML = vers.length === 0
+            ? '<div style="color:#888; text-align:center; padding:20px;">暂无历史版本（发布作品后会自动记录）。</div>'
+            : vers.map((v, i) => {
+                const w = (v.title || '未命名');
+                return `<div class="ver-item">
+                    <div class="v-info">
+                        <div style="font-weight:bold; color:#eee;">${escHtml(w)}</div>
+                        <div class="v-time">保存于 ${new Date(v.t).toLocaleString()} · ${(v.acts||[]).length} 幕 · ${(v.roles||[]).length} 角色 · ${(v.clues||[]).length} 线索</div>
+                    </div>
+                    <div class="v-actions">
+                        <button class="btn-sm warn" onclick="restoreVersion(${parseInt(editId)}, ${i})">↩️ 恢复到编辑区</button>
+                    </div>
+                </div>`;
+            }).join('');
+        document.getElementById('verModal').style.display = 'flex';
+    }
+    function hideVerModal() { document.getElementById('verModal').style.display = 'none'; }
 
     // 发布成功后清除草稿
     async function submitScript() {
@@ -1109,7 +1471,13 @@
         const url = editId ? '/api/game/updateScript' : '/api/game/createScript';
         try {
             const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }).then(r => r.json());
-            if(res.success) { localStorage.removeItem(DRAFT_KEY); alert("🎉 发布成功！"); location.href='my-creation.html'; }
+            if(res.success) {
+                const savedId = editId ? parseInt(editId) : parseInt(res.data);
+                if (!isNaN(savedId)) pushVersion(savedId, currentSnapshot());
+                localStorage.removeItem(DRAFT_KEY);
+                alert("🎉 发布成功！已记录版本快照，可随时回滚。");
+                location.href='my-creation.html';
+            }
             else alert("发布失败：" + res.msg);
         } catch(e) { alert("网络异常"); }
     }
@@ -1180,7 +1548,8 @@
                 }
                 render();
                 renderEndings();
-                // 编辑已有剧本：加载完成后若存在该剧本的更新草稿，提示恢复
+                // 编辑已有剧本：显示版本历史入口 + 若存在该剧本的更新草稿则提示恢复
+                document.getElementById('verHistoryBtn').style.display = 'inline-block';
                 promptDraftBanner();
             }
         } else {
@@ -1192,6 +1561,8 @@
             renderEndings();
             promptDraftBanner();
         }
+        autosizeAll();
+        renderAiHistory();
     };
 </script>
 </body>
