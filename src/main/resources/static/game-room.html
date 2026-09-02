@@ -234,6 +234,20 @@
         .pick-role-card .taken-badge .taken-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #ff8a80; box-shadow: 0 0 10px rgba(255,138,128,0.5); }
         .pick-role-card .taken-badge .taken-text { font-size: 12px; color: #ffb4b4; font-weight: bold; text-shadow: 0 1px 3px rgba(0,0,0,0.8); max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+        /* 人机模式：AI 代理领取的角色卡样式（青色 AI 主题） */
+        .pick-role-card.ai-taken { opacity: 0.62; cursor: not-allowed; border-color: rgba(0,229,255,0.45); background: rgba(0,229,255,0.06); filter: grayscale(30%) brightness(0.85); }
+        .pick-role-card.ai-taken .role-avatar-wrap { border-color: #00b4db; }
+        .pick-role-card.ai-taken .taken-avatar { border-color: #00e5ff; box-shadow: 0 0 10px rgba(0,229,255,0.5); }
+        .pick-role-card.ai-taken .taken-text { color: #9fe8ff; }
+        .pick-role-card.ai-taken.animate-taken { animation: takenShake 0.5s ease; }
+
+        /* 人机模式成员区 AI 成员 */
+        .player-chip.ai-chip { background: rgba(0,229,255,0.08); border-color: rgba(0,229,255,0.35); }
+        .player-chip.ai-chip .chip-avatar { border-color: #00b4db; }
+        .player-chip.ai-chip .chip-name { color: #00e5ff; }
+        .player-chip.ai-chip .chip-role { color: #7fd8ee; }
+        .player-chip.ai-chip .chip-role.empty { color: #4a7a88; }
+
         .pick-role-card .pick-role-status { position: absolute; bottom: 6px; left: 0; right: 0; font-size: 10px; color: #888; }
 
         /* 选择成功庆祝 */
@@ -793,79 +807,299 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         renderOnlineRoomUI(totalSeats, username, playerCount, players);
     }
 
+    // ============================================================
+    // ✅ 人机（AI 沉浸）模式：1 真人 + N-1 AI 剧友，真人选角后 AI 依次领取剩余角色
+    // ============================================================
+    let aiModeMembers = [];   // 成员列表：真人 + AI 剧友（AI 领角状态存这里）
+    let aiAssignTimer = null;
+
+    function buildAiModeMembers(totalSeats, username) {
+        const realUserId = localStorage.getItem('userId') || '0';
+        const me = {
+            userId: realUserId,
+            username: username,
+            avatar: localStorage.getItem('avatarUrl') || '',
+            roleId: null, roleName: null,
+            isAi: false
+        };
+        const members = [me];
+        // 座位数 = min(房间人数, 角色数)。AI 数量 ≤ 剩余可分配角色数（保证每个 AI 都能领到角色）
+        const seatCount = Math.min(totalSeats, availableRoles.length > 0 ? availableRoles.length : totalSeats);
+        // 若角色数比 seatCount 多，尽量按房间人数补 AI；但 AI 总数不得超过 角色数-1
+        const aiCount = Math.min(Math.max(0, seatCount - 1), Math.max(0, availableRoles.length - 1));
+        for (let i = 1; i <= aiCount; i++) {
+            members.push({
+                userId: `ai_seat_${i}`,
+                username: `AI剧友${i}`,
+                avatar: '',
+                roleId: null, roleName: null,
+                isAi: true
+            });
+        }
+        return members;
+    }
+
+    // ✅ 渲染 AI 模式高级房间界面（成员区 + 角色卡片区）
+    function renderAiRoomUI(totalSeats, username) {
+        document.getElementById('displayRoomName').classList.add('ai-mode-text');
+        document.getElementById('modeTag').innerHTML = '🤖 AI 沉浸模式';
+        document.getElementById('modeTag').style.color = '#00e5ff';
+        document.getElementById('modeTag').style.background = 'rgba(0,229,255,0.1)';
+        document.getElementById('displayPlayerCount').innerText = `${totalSeats}/${totalSeats}`;
+        document.getElementById('sysWelcomeMsg').innerText = "系统：已连接大模型引擎，AI剧友已就位。选择你的角色后，AI 剧友会自动领取剩余角色！";
+        document.getElementById('sysWelcomeMsg').style.color = "#00e5ff";
+
+        // 成员列表初始化（每次渲染前重建，若已有选角状态则保留）
+        if (aiModeMembers.length === 0) {
+            aiModeMembers = buildAiModeMembers(totalSeats, username);
+        }
+        currentTotalSeats = totalSeats;
+
+        document.getElementById('roomBody').style.display = 'flex';
+        document.getElementById('seatsContainer').style.display = 'none';
+
+        renderAiMembersStrip();
+        renderAiRolesGrid();
+        updateAiActionButtons();
+    }
+
+    // ✅ AI 模式成员列表渲染（真人 + AI 剧友 chips）
+    function renderAiMembersStrip() {
+        const strip = document.getElementById('playersStrip');
+        const currentUserId = localStorage.getItem('userId');
+        let chipsHtml = '';
+        const seen = new Set();
+        const members = aiModeMembers.filter(m => {
+            if (seen.has(m.userId)) return false;
+            seen.add(m.userId);
+            return true;
+        });
+        // 真人排最前
+        members.sort((a, b) => (a.isAi ? 1 : 0) - (b.isAi ? 1 : 0));
+
+        members.forEach((m, idx) => {
+            const isMe = !m.isAi;
+            if (m.isAi) {
+                const avatarUrl = m.avatar && m.avatar !== '' ? m.avatar
+                    : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2746%27 fill=%27%2300b4db%27/%3E%3Ctext x=%2750%27 y=%2764%27 text-anchor=%27middle%27 font-size=%2734%27 fill=%27white%27%3E🤖%3C/text%3E%3C/svg%3E';
+                const roleText = m.roleId && m.roleName ? `🎭 ${m.roleName}` : '⏳ 等待分配';
+                chipsHtml += `
+                    <div class="player-chip ai-chip" style="animation-delay:${idx * 50}ms">
+                        <img class="chip-avatar" src="${avatarUrl}" onerror="this.src='${getInitialsAvatar(m.username)}';">
+                        <div class="chip-info">
+                            <div class="chip-name">${escapeHtml(m.username)}</div>
+                            <div class="chip-role ${m.roleId ? '' : 'empty'}">${roleText}</div>
+                        </div>
+                    </div>`;
+            } else {
+                const avatarUrl = m.avatar && m.avatar !== '' && !m.avatar.includes('default_role.jpg')
+                    ? m.avatar : getAvatarUrl(m.username, null);
+                const roleText = m.roleId && m.roleName ? `🎭 ${m.roleName}` : '⏳ 请选择角色';
+                chipsHtml += `
+                    <div class="player-chip me-chip host-chip" style="animation-delay:${idx * 50}ms">
+                        <img class="chip-avatar" src="${avatarUrl}" onerror="this.src='${getInitialsAvatar(m.username)}';">
+                        <div class="chip-info">
+                            <div class="chip-name">${escapeHtml(m.username)} (我)<span class="host-tag">👑</span></div>
+                            <div class="chip-role ${m.roleId ? '' : 'empty'}">${roleText}</div>
+                        </div>
+                    </div>`;
+            }
+        });
+        strip.innerHTML = chipsHtml;
+        document.getElementById('playersCountBadge').innerText = `${members.length}/${aiModeMembers.length}`;
+    }
+
+    // ✅ AI 模式角色卡片渲染：真人可选，AI 领取的角色显示 ai-taken
+    function renderAiRolesGrid() {
+        const grid = document.getElementById('rolesGrid');
+        const currentUserId = localStorage.getItem('userId');
+        if (!availableRoles || availableRoles.length === 0) {
+            grid.innerHTML = '<div style="color:#888; text-align:center; padding:20px; grid-column:1/-1;">该剧本暂无角色配置</div>';
+            return;
+        }
+
+        const roleCount = availableRoles.length;
+        const rolesSection = grid.closest('.roles-section');
+        const availWidth = rolesSection ? Math.max(340, rolesSection.clientWidth - 36) : 600;
+        const maxColsByWidth = Math.max(1, Math.floor((availWidth + 14) / (170 + 14)));
+        let columns = Math.min(roleCount, maxColsByWidth);
+        columns = Math.min(columns, 4);
+        grid.style.gridTemplateColumns = `repeat(${columns}, 170px)`;
+
+        const now = Date.now();
+        const rolesHtml = availableRoles.map((role, idx) => {
+            const roleIdStr = String(role.roleId);
+            // 谁领取了这个角色
+            const takenBy = aiModeMembers.find(m => m.roleId !== null && String(m.roleId) === roleIdStr);
+            const isMine = takenBy && !takenBy.isAi;
+
+            let cardClass = 'pick-role-card';
+            let badgeHtml = '';
+            if (isMine) {
+                cardClass += ' selected';
+                badgeHtml = '<div class="selected-mark">✓</div>';
+            } else if (takenBy) {
+                cardClass += ' ai-taken';
+                if (now - (roleTakenFlashTimes[roleIdStr] || 0) < 2000) {
+                    cardClass += ' animate-taken';
+                }
+                badgeHtml = `
+                    <div class="taken-badge">
+                        <img class="taken-avatar" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2746%27 fill=%27%2300b4db%27/%3E%3Ctext x=%2750%27 y=%2764%27 text-anchor=%27middle%27 font-size=%2734%27 fill=%27white%27%3E🤖%3C/text%3E%3C/svg%3E">
+                        <span class="taken-text">${escapeHtml(takenBy.username)} 代理</span>
+                    </div>`;
+            }
+
+            const roleAvatar = role.avatar && role.avatar !== '' && !role.avatar.includes('default_role.jpg')
+                ? role.avatar : getAvatarUrl(role.name, null);
+            const desc = role.background || '暂无简介';
+
+            return `
+                <div class="${cardClass}" data-role-id="${role.roleId}" style="animation-delay:${idx * 40}ms" onclick="pickAiRole(${role.roleId})">
+                    ${badgeHtml}
+                    <div class="role-avatar-wrap"><img src="${roleAvatar}" onerror="this.src='${getAvatarUrl(role.name, null)}';"></div>
+                    <div class="pick-role-name">${escapeHtml(role.name)}</div>
+                    <div class="pick-role-desc">${escapeHtml(desc)}</div>
+                </div>`;
+        }).join('');
+
+        grid.innerHTML = rolesHtml;
+        document.getElementById('rolesHint').innerText =
+            aiModeMembers.some(m => m.roleId) && !aiModeMembers.find(m => !m.isAi)?.roleId
+                ? 'AI 剧友正在领取角色... 点击可选卡片切换你的选择'
+                : '点击角色卡片选择你扮演的角色，AI 剧友会自动补位';
+    }
+
+    // ✅ AI 模式点击角色：真人选择自己角色（可点任何卡片，AI 会让出）
+    window.pickAiRole = function(roleId) {
+        const card = document.querySelector(`.pick-role-card[data-role-id="${roleId}"]`);
+        if (!card) return;
+        const role = availableRoles.find(r => r.roleId === roleId);
+        if (!role) return;
+
+        const me = aiModeMembers.find(m => !m.isAi);
+        if (!me) return;
+
+        // 相同角色点击 = 取消选择（全部 AI 释放）
+        if (String(me.roleId) === String(roleId)) {
+            me.roleId = null; me.roleName = null;
+            window.selectedRoleId = null;
+            releaseAllAiRoles();
+            renderAiMembersStrip(); renderAiRolesGrid(); updateAiActionButtons();
+            return;
+        }
+
+        // ✅ 真人选择该角色（若已被某 AI 领取，则让该 AI 让出）
+        const owner = aiModeMembers.find(m => m.isAi && m.roleId !== null && String(m.roleId) === String(roleId));
+        if (owner) { owner.roleId = null; owner.roleName = null; }
+
+        me.roleId = roleId; me.roleName = role.name;
+        window.selectedRoleId = roleId;
+
+        // 清除旧的 AI 分配计时器
+        if (aiAssignTimer) { clearTimeout(aiAssignTimer); aiAssignTimer = null; }
+        // 释放所有 AI 已领角色，重新分配（保留真人选择）
+        releaseAllAiRoles();
+
+        renderAiMembersStrip(); renderAiRolesGrid(); updateAiActionButtons();
+
+        // 依次让 AI 领取剩余角色（动画）
+        assignAiRemainingRoles();
+    };
+
+    // ✅ AI 依次领取剩余角色（间隔动画）
+    function assignAiRemainingRoles() {
+        const me = aiModeMembers.find(m => !m.isAi);
+        if (!me || !me.roleId) return;
+        const myRoleId = String(me.roleId);
+
+        const aiMembers = aiModeMembers.filter(m => m.isAi);
+        // 剩余可选角色（排除真人已选）
+        const remainingRoles = availableRoles.filter(r => String(r.roleId) !== myRoleId);
+        // 按座位逐个分配，AI 数 = min(AI数, 剩余角色数)
+        const assignCount = Math.min(aiMembers.length, remainingRoles.length);
+
+        for (let i = 0; i < assignCount; i++) {
+            const ai = aiMembers[i];
+            const role = remainingRoles[i];
+            const delay = 500 + i * 620; // 逐个延迟动画
+            (function(aiMember, roleObj, roleIdStr) {
+                aiAssignTimer = setTimeout(() => {
+                    aiMember.roleId = roleObj.roleId;
+                    aiMember.roleName = roleObj.name;
+                    roleTakenFlashTimes[roleIdStr] = Date.now();
+                    renderAiMembersStrip();
+                    renderAiRolesGrid();
+                    updateAiActionButtons();
+                }, delay);
+            })(ai, role, String(role.roleId));
+        }
+        // 最终状态
+        const finalDelay = 500 + assignCount * 620 + 200;
+        aiAssignTimer = setTimeout(() => {
+            updateAiActionButtons();
+        }, finalDelay);
+    }
+
+    function releaseAllAiRoles() {
+        aiModeMembers.forEach(m => { if (m.isAi) { m.roleId = null; m.roleName = null; } });
+    }
+
+    // ✅ AI 模式按钮状态
+    function updateAiActionButtons() {
+        const me = aiModeMembers.find(m => !m.isAi);
+        const startBtn = document.getElementById('startGameBtn');
+        const hostStartBtn = document.getElementById('hostStartGameBtn');
+
+        if (me && me.roleId) {
+            startBtn.innerText = `🎭 ${me.roleName}`;
+            startBtn.title = '点击可重新选择角色';
+            startBtn.style.opacity = '0.9';
+            startBtn.disabled = false;
+
+            // 检查 AI 是否都领取完毕（或已无可分配角色）
+            const aiMembers = aiModeMembers.filter(m => m.isAi);
+            const allAiAssigned = aiMembers.every(m => m.roleId);
+            if (allAiAssigned || aiMembers.length === 0) {
+                hostStartBtn.style.display = 'inline-block';
+                hostStartBtn.innerText = "🚀 开始游戏";
+                hostStartBtn.disabled = false;
+                hostStartBtn.style.opacity = '1';
+            } else {
+                hostStartBtn.style.display = 'inline-block';
+                hostStartBtn.innerText = `⏳ AI 剧友领角中 (${aiMembers.filter(m => !m.roleId).length}人未定)...`;
+                hostStartBtn.disabled = true;
+                hostStartBtn.style.opacity = '0.55';
+            }
+        } else {
+            startBtn.innerText = "🎭 选择角色";
+            startBtn.title = '点击选择你的角色';
+            startBtn.style.opacity = '1';
+            startBtn.disabled = false;
+            hostStartBtn.style.display = 'inline-block';
+            hostStartBtn.innerText = "⏳ 请先选择你的角色";
+            hostStartBtn.disabled = true;
+            hostStartBtn.style.opacity = '0.55';
+        }
+        startBtn.classList.remove('ai-ready-btn');
+        startBtn.style.cursor = 'pointer';
+        startBtn.style.display = 'inline-block';
+    }
+
     function renderRoomStatus(totalSeats, username, currentPlayerCount, roomPlayers) {
         const seatsContainer = document.getElementById('seatsContainer');
         let seatsHtml = '';
 
         if (currentMode === 'ai') {
+            // ✅ AI 沉浸模式：高级版界面（成员区 + 角色卡片），1真人 + N-1 AI 剧友
             document.getElementById('displayRoomName').classList.add('ai-mode-text');
-            document.getElementById('modeTag').innerHTML = '🤖 AI 沉浸模式';
-            document.getElementById('modeTag').style.color = '#00e5ff';
-            document.getElementById('modeTag').style.background = 'rgba(0,229,255,0.1)';
-            document.getElementById('displayPlayerCount').innerText = `${totalSeats}/${totalSeats}`;
-
-            document.getElementById('sysWelcomeMsg').innerText = "系统：已连接大模型引擎，AI剧友已落座，随时发车！";
-            document.getElementById('sysWelcomeMsg').style.color = "#00e5ff";
-
-            seatsHtml += `
-                <div class="player-seat occupied ready">
-                    <div class="ready-badge">已准备</div>
-                    <div class="seat-avatar"><img src="${getAvatarUrl(username, null)}" onerror="this.src='';"></div>
-                    <div class="seat-name">${username} (我)</div>
-                    <div class="seat-role">等待选择角色</div>
-                </div>`;
-
-            // ✅ AI 模式：为每个座位分配真实的角色
-            if (availableRoles && availableRoles.length > 0) {
-                for (let i = 0; i < Math.min(totalSeats - 1, availableRoles.length); i++) {
-                    const role = availableRoles[i];
-                    const roleAvatar = role.avatar || getAvatarUrl(role.name, null);
-                    seatsHtml += `
-                        <div class="player-seat occupied ai-seat ready">
-                            <div class="ready-badge">AI 准备</div>
-                            <div class="seat-avatar"><img src="${roleAvatar}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2745%27 fill=%27%2300e5ff%27/%3E%3Ctext x=%2750%27 y=%2755%27 text-anchor=%27middle%27 font-size=%2730%27 fill=%27white%27%3E${role.name.charAt(0)}%3C/text%3E%3C/svg%3E';"></div>
-                            <div class="seat-name">🤖 ${role.name}</div>
-                            <div class="seat-role">🎭 ${role.name}</div>
-                        </div>`;
-                }
-            } else {
-                // 如果没有角色信息，显示默认AI座位
-                for (let i = 1; i < totalSeats; i++) {
-                    seatsHtml += `
-                        <div class="player-seat occupied ai-seat ready">
-                            <div class="ready-badge">AI 准备</div>
-                            <div class="seat-avatar"><img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2745%27 fill=%27%2300e5ff%27/%3E%3Ctext x=%2750%27 y=%2755%27 text-anchor=%27middle%27 font-size=%2730%27 fill=%27white%27%3EAI%3C/text%3E%3C/svg%3E"></div>
-                            <div class="seat-name">🤖 AI玩家 ${i}号位</div>
-                            <div class="seat-role">AI 角色</div>
-                        </div>`;
-                }
+            // 重置成员状态（每次进入 AI 房间都是全新开局）
+            if (!window.__aiModeInited) {
+                aiModeMembers = [];
+                window.__aiModeInited = true;
             }
-            seatsContainer.innerHTML = seatsHtml;
-
-            // ✅ AI 模式：显示角色选择按钮
-            const startBtn = document.getElementById('startGameBtn');
-            const hostStartBtn = document.getElementById('hostStartGameBtn');
-            
-            if (availableRoles.length > 0) {
-                startBtn.innerText = "🎭 选择角色";
-                startBtn.title = '点击选择你的角色';
-                startBtn.disabled = false;
-                startBtn.style.opacity = '1';
-                startBtn.style.cursor = 'pointer';
-                startBtn.classList.remove('ai-ready-btn');
-            } else {
-                startBtn.innerText = "⚠️ 该剧本暂无角色";
-                startBtn.disabled = true;
-                startBtn.style.opacity = '0.5';
-                startBtn.style.cursor = 'not-allowed';
-            }
-            
-            // ✅ AI 模式：显示开始游戏按钮（房主专用）
-            hostStartBtn.style.display = 'inline-block';
-            hostStartBtn.innerText = "🚀 开始游戏";
-            hostStartBtn.disabled = false;
-            hostStartBtn.style.opacity = '1';
-
+            renderAiRoomUI(totalSeats, username);
+            return;
         } else {
             document.getElementById('displayPlayerCount').innerText = `${currentPlayerCount}/${totalSeats}`;
             
@@ -999,12 +1233,12 @@ async function updateRoomStatus(totalSeats, username, roomId) {
             return;
         }
 
-        // ✅ 联机模式：角色选择已内嵌在主界面，直接滚动到角色区即可
-        if (currentMode === 'online' && currentRoomId) {
+        // ✅ 联机模式 / AI 沉浸模式：角色选择已内嵌在主界面，直接滚动到角色区即可
+        if ((currentMode === 'online' && currentRoomId) || currentMode === 'ai') {
             const rolesSection = document.querySelector('.roles-section');
             if (rolesSection) {
                 rolesSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                rolesSection.style.borderColor = '#d4b475';
+                rolesSection.style.borderColor = currentMode === 'ai' ? '#00e5ff' : '#d4b475';
                 setTimeout(() => { rolesSection.style.borderColor = '#3a3a3a'; }, 1500);
             }
             return;
