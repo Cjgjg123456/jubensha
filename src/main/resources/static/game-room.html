@@ -13,13 +13,34 @@
         body { width: 100vw; height: 100vh; background-color: #1a1a1a; color: #e0e0e0; display: flex; justify-content: center; align-items: center; padding: 20px; }
 
         .container { display: flex; gap: 20px; width: 100%; max-width: 1400px; height: 100%; background: #2a2a2a; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3a3a3a; }
-        .room-main { flex: 2; display: flex; flex-direction: column; }
+        .room-main { flex: 1; display: flex; flex-direction: column; min-width: 0; transition: flex 0.45s ease; }
         .room-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3a3a3a; padding-bottom: 20px; margin-bottom: 30px; }
         .room-title-box h1 { font-size: 28px; color: #d4b475; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         .room-title-box h1.ai-mode-text { color: #00e5ff; text-shadow: 0 0 10px rgba(0,229,255,0.5); }
         .room-title-box p { font-size: 16px; color: #aaa; }
         .back-btn { background: #b89758; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 15px; font-weight: bold; }
         .back-btn:hover { background: #d4b475; transform: translateY(-2px); }
+
+        /* ====== 可折叠房间频道（聊天抽屉） ====== */
+        .room-chat { flex: 0 0 auto; width: 360px; min-width: 0; background: #222; border-radius: 12px; display: flex; flex-direction: column; border: 1px solid #3a3a3a; overflow: hidden; transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1); }
+        .chat-panel { display: flex; flex-direction: column; width: 360px; flex: 1 0 auto; min-height: 0; }
+        /* 折叠把手（收起后显示） */
+        .chat-handle { display: none; width: 44px; height: 100%; background: #262626; border-radius: 12px; border: 1px solid #3a3a3a; flex-direction: column; align-items: center; justify-content: center; gap: 12px; cursor: pointer; transition: background 0.3s, border-color 0.3s; position: relative; }
+        .chat-handle:hover { background: #303030; border-color: #d4b475; }
+        .chat-handle:hover .handle-arrow { transform: translateX(2px); }
+        .handle-arrow { font-size: 16px; color: #d4b475; transition: transform 0.3s; }
+        .handle-icon { font-size: 20px; filter: grayscale(0.2); }
+        .handle-text { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 3px; font-size: 12px; color: #d4b475; font-weight: bold; user-select: none; }
+        .handle-badge { position: absolute; top: 14px; right: 8px; background: #ff5252; color: #fff; font-size: 10px; min-width: 16px; height: 16px; line-height: 16px; border-radius: 8px; text-align: center; padding: 0 4px; font-weight: bold; display: none; box-shadow: 0 0 8px rgba(255,82,82,0.5); animation: badgePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes badgePop { from { transform: scale(0); } to { transform: scale(1); } }
+        .container.chat-collapsed .room-chat { width: 44px; }
+        .container.chat-collapsed .chat-panel { display: none; }
+        .container.chat-collapsed .chat-handle { display: flex; }
+
+        .chat-header { padding: 16px 18px; border-bottom: 1px solid #3a3a3a; font-size: 16px; font-weight: bold; color: #d4b475; display: flex; justify-content: space-between; align-items: center; }
+        .chat-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .chat-collapse-btn { flex-shrink: 0; width: 28px; height: 28px; background: rgba(255,255,255,0.06); border: 1px solid #444; color: #aaa; border-radius: 8px; cursor: pointer; font-size: 13px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
+        .chat-collapse-btn:hover { background: rgba(212,180,117,0.2); border-color: #d4b475; color: #fff; transform: translateX(-2px); }
 
         .seats-container { flex: 1; display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 20px; padding: 20px; overflow-y: auto; }
         .player-seat { width: 140px; height: 170px; background: #333; border: 2px solid #444; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; transition: 0.3s; }
@@ -43,8 +64,6 @@
         .start-btn.ai-ready-btn { background: linear-gradient(135deg, #00b4db, #0083b0); box-shadow: 0 4px 15px rgba(0,180,219,0.4); animation: pulseBtn 2s infinite; }
         @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); box-shadow: 0 8px 25px rgba(0,229,255,0.6); } 100% { transform: scale(1); } }
 
-        .room-chat { flex: 1; background: #222; border-radius: 12px; display: flex; flex-direction: column; border: 1px solid #3a3a3a; }
-        .chat-header { padding: 20px; border-bottom: 1px solid #3a3a3a; font-size: 18px; font-weight: bold; color: #d4b475; display: flex; justify-content: space-between;}
         .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
         .msg-sys { text-align: center; color: #888; font-size: 13px; margin: 10px 0;}
         .msg-item { display: flex; flex-direction: column; animation: fadeIn 0.3s forwards; }
@@ -220,7 +239,7 @@
 </head>
 <body>
 
-<div class="container">
+<div class="container" id="container">
     <div class="room-main">
         <div class="room-header">
             <div class="room-title-box">
@@ -250,21 +269,34 @@
         </div>
     </div>
 
-    <div class="room-chat">
-        <div class="chat-header">
-            <span>房间频道</span>
-            <span id="modeTag" style="font-size:12px; background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:10px;">🌐 联机模式</span>
+    <div class="room-chat" id="roomChat">
+        <!-- ✅ 折叠把手：聊天区收起后显示 -->
+        <div class="chat-handle" onclick="toggleChatPanel(false)" title="展开房间频道">
+            <span class="handle-arrow">▶</span>
+            <span class="handle-icon">💬</span>
+            <span class="handle-text">房间频道</span>
+            <span class="handle-badge" id="chatUnreadBadge">0</span>
         </div>
-        <div class="chat-messages" id="chatBox">
-            <div class="msg-sys" style="color: #ff9900;" id="sysWelcomeMsg">系统：您创建了房间，请等待其他玩家加入。</div>
-        </div>
-        <div class="chat-composer">
-            <div class="chat-input-hint" id="chatInputHint" aria-live="polite"></div>
-            <div class="chat-input">
-                <input type="text" id="chatInput" placeholder="发句语音或文字打个招呼…" maxlength="500" autocomplete="off" enterkeyhint="send">
-                <button type="button" id="voskVoiceBtn" class="btn-voice" title="点击开始离线语音转文字（需允许麦克风权限）" aria-label="语音转文字">🎤</button>
-                <button type="button" id="recordVoiceBtn" class="btn-voice" title="点击录音5秒后自动发送" aria-label="点击录音">🎙️</button>
-                <button type="button" id="sendBtn" class="btn-send" onclick="sendMessage()" title="发送 (Enter)">发送</button>
+        <!-- ✅ 聊天面板内容 -->
+        <div class="chat-panel">
+            <div class="chat-header">
+                <div class="chat-header-left">
+                    <span>房间频道</span>
+                    <span id="modeTag" style="font-size:12px; background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:10px;">🌐 联机模式</span>
+                </div>
+                <button class="chat-collapse-btn" onclick="toggleChatPanel(true)" title="折叠房间频道">❮</button>
+            </div>
+            <div class="chat-messages" id="chatBox">
+                <div class="msg-sys" style="color: #ff9900;" id="sysWelcomeMsg">系统：您创建了房间，请等待其他玩家加入。</div>
+            </div>
+            <div class="chat-composer">
+                <div class="chat-input-hint" id="chatInputHint" aria-live="polite"></div>
+                <div class="chat-input">
+                    <input type="text" id="chatInput" placeholder="发句语音或文字打个招呼…" maxlength="500" autocomplete="off" enterkeyhint="send">
+                    <button type="button" id="voskVoiceBtn" class="btn-voice" title="点击开始离线语音转文字（需允许麦克风权限）" aria-label="语音转文字">🎤</button>
+                    <button type="button" id="recordVoiceBtn" class="btn-voice" title="点击录音5秒后自动发送" aria-label="点击录音">🎙️</button>
+                    <button type="button" id="sendBtn" class="btn-send" onclick="sendMessage()" title="发送 (Enter)">发送</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1678,6 +1710,53 @@ async function updateRoomStatus(totalSeats, username, roomId) {
         
         chatBox.innerHTML += msgHtml;
         chatBox.scrollTop = chatBox.scrollHeight;
+
+        // ✅ 面板折叠时收到他人消息 → 累计未读角标
+        if (!isMe && document.getElementById('container').classList.contains('chat-collapsed')) {
+            incrementChatUnread();
+        }
+    }
+
+    // ====== 房间频道折叠逻辑 ======
+    let chatUnreadCount = 0;
+
+    function toggleChatPanel(collapse) {
+        const container = document.getElementById('container');
+        const currentlyCollapsed = container.classList.contains('chat-collapsed');
+        // collapse=true → 折叠；collapse=false → 展开；未传参 → 切换
+        const shouldCollapse = collapse === undefined ? !currentlyCollapsed : collapse;
+
+        if (shouldCollapse && !currentlyCollapsed) {
+            container.classList.add('chat-collapsed');
+            // 折叠时释放输入焦点，防止键盘弹出遮挡
+            if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        } else if (!shouldCollapse && currentlyCollapsed) {
+            container.classList.remove('chat-collapsed');
+            chatUnreadCount = 0;
+            updateChatUnreadBadge();
+            // 展开后聚焦输入框
+            setTimeout(() => {
+                const input = document.getElementById('chatInput');
+                if (input && input.disabled === false) input.focus();
+            }, 480);
+        }
+    }
+
+    function incrementChatUnread() {
+        chatUnreadCount++;
+        updateChatUnreadBadge();
+    }
+
+    function updateChatUnreadBadge() {
+        const badge = document.getElementById('chatUnreadBadge');
+        if (!badge) return;
+        if (chatUnreadCount > 0) {
+            badge.style.display = 'block';
+            badge.textContent = chatUnreadCount > 99 ? '99+' : String(chatUnreadCount);
+        } else {
+            badge.style.display = 'none';
+            badge.textContent = '0';
+        }
     }
 
     // ✅ 更新角色选择状态
@@ -1869,6 +1948,11 @@ async function updateRoomStatus(totalSeats, username, roomId) {
                 if (hasNewMessages && newMessagesHtml) {
                     chatBox.innerHTML += newMessagesHtml;
                     chatBox.scrollTop = chatBox.scrollHeight;
+                    // ✅ 面板折叠时收到新消息 → 累计未读角标
+                    const container = document.getElementById('container');
+                    if (container && container.classList.contains('chat-collapsed')) {
+                        incrementChatUnread();
+                    }
                 }
             }
         } catch (error) {
