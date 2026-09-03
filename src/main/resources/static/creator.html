@@ -174,11 +174,31 @@
         .rel-palette .pal-item.in-graph { opacity:.55; border-style:dashed; cursor:default; }
         .rel-palette .pal-item.in-graph:hover { transform:none; box-shadow:none; border-color:rgba(255,255,255,.2); }
         .rel-palette .pal-item:not(.in-graph):hover { cursor:grab; }
+        .rel-palette .pal-item.npc-item { border-color:rgba(155,77,255,.45); background:rgba(155,77,255,.08); }
+        .rel-palette .pal-item.npc-item:hover { border-color:#b39ddb; background:rgba(155,77,255,.16); }
+        .rel-palette .pal-item.npc-item .pal-avatar { border-color:#b39ddb; }
+        .pal-group-title { width:100%; font-size:11px; color:#888; display:flex; align-items:center; gap:8px; margin:4px 0 2px; }
+        .pal-group-title .pal-add-btn { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.18); color:#ccc;
+            border-radius:6px; padding:1px 8px; font-size:11px; cursor:pointer; margin-left:auto; }
+        .pal-group-title .pal-add-btn:hover { color:#fff; border-color:#fff; }
         .rel-drag-ghost { opacity:.9 !important; cursor:grabbing !important; }
         .rel-graph { width:100%; height:420px; background: radial-gradient(ellipse at center, rgba(0,229,255,.04) 0%, rgba(0,0,0,.28) 75%);
             border:1px solid rgba(0,229,255,.22); border-radius:12px; overflow:hidden; position:relative; cursor:default; }
         .rel-graph.drag-over { border-color:#00e5ff; box-shadow: inset 0 0 60px rgba(0,229,255,.12); }
         .rel-graph.linking { cursor: crosshair; box-shadow: inset 0 0 40px rgba(0,229,255,.07); }
+        /* NPC 节点（紫框） */
+        .rel-npc-node { background-color:#3a2350; border-color:#b39ddb; }
+        /* 配角编辑器小组 */
+        .npc-mini-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:6px 0; }
+        .npc-mini-form input { background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.16); color:#fff; border-radius:8px; padding:6px 10px; font-size:12px; outline:none; }
+        .npc-mini-form input:focus { border-color:#b39ddb; }
+        .npc-mini-form .npc-add { background:linear-gradient(135deg,#8E2DE2,#4A00E0); color:#fff; border:none; border-radius:8px; padding:6px 14px; cursor:pointer; font-size:12px; }
+        .npc-chip { display:inline-flex; align-items:center; gap:6px; background:rgba(155,77,255,.12); border:1px solid rgba(155,77,255,.35);
+            border-radius:20px; padding:3px 10px 3px 3px; margin-right:6px; margin-bottom:6px; }
+        .npc-chip img { width:24px; height:24px; border-radius:50%; object-fit:cover; border:1px solid #b39ddb; }
+        .npc-chip .npc-chip-name { font-size:12px; color:#e0c3fc; }
+        .npc-chip .npc-chip-del { cursor:pointer; color:#888; font-size:12px; margin-left:2px; }
+        .npc-chip .npc-chip-del:hover { color:#ff8a80; }
         .rel-node-label { color:#fff; font-size:13px; font-weight:bold; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
         .rel-edge-label { color:#ddd; font-size:10px; background:rgba(0,0,0,.55); padding:1px 4px; border-radius:3px; }
         .rel-tag-hidden { color:#ff9800; font-size:9px; }
@@ -292,8 +312,16 @@
                         <button class="btn-sm" onclick="relExportText()" title="把关系图转为文本，便于复制/旧版查看">📄 导出文本</button>
                         <span class="rel-hint" id="relHint">① 从人物库把角色拖进画布 ② 连线模式连关系</span>
                     </div>
-                    <!-- 人物库：头像+名字，可拖拽或点击放入画布 -->
-                    <div class="rel-palette" id="relPalette"></div>
+                    <!-- 人物库：玩家角色组 + 配角组，可拖拽/点击放入画布 -->
+                    <div class="pal-group-title" style="margin:2px 0 4px;">🎭 玩家角色（占玩家人数）</div>
+                    <div class="rel-palette" id="relPaletteRole"></div>
+                    <div class="rel-palette" id="relPaletteNpc">
+                        <div class="pal-group-title" style="margin:0;">
+                            🤖 配角 / NPC（剧本内非玩家角色，也可参与关系网）
+                            <button type="button" class="pal-add-btn" onclick="openNpcEditor()">➕ 添加配角</button>
+                        </div>
+                    </div>
+                    <div id="npcChipBox" style="margin:0 0 8px;"></div>
                     <div id="relGraph" class="rel-graph" data-tip="把角色拖到这里"></div>
                 </div>
                 <div class="full">
@@ -470,6 +498,31 @@
     </div>
 </div>
 
+<!-- 配角/NPC 编辑器 -->
+<div class="modal-overlay" id="npcModal" style="z-index: 1350;">
+    <div class="modal-content" style="width: 420px; border-color: #b39ddb; box-shadow: 0 0 30px rgba(155,77,255,.3);">
+        <div class="modal-header">
+            <div class="modal-title" style="color:#e0c3fc;">🤖 添加配角 / NPC</div>
+            <button class="close-btn" onclick="closeNpcEditor()">×</button>
+        </div>
+        <div style="display:flex; gap:14px; margin-bottom:14px; align-items:center;">
+            <div onclick="document.getElementById('npcAvatarInput').click()" style="cursor:pointer; text-align:center; flex-shrink:0;">
+                <img id="npcAvatarPreview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%233a2350'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='34' fill='%23b39ddb'%3E🤖%3C/text%3E%3C/svg%3E" style="width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid #b39ddb;">
+                <input type="file" id="npcAvatarInput" hidden accept="image/*" onchange="handleNpcAvatar(this)">
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+                <input id="npcName" class="meta-input" placeholder="配角名称（如：管家老陈、神秘黑衣人）" style="border-color:rgba(179,157,219,.4);">
+                <textarea id="npcIntro" class="meta-input" rows="2" placeholder="简介/身份（可选，AI 创作会引用）" style="border-color:rgba(179,157,219,.4);"></textarea>
+            </div>
+        </div>
+        <p style="font-size:12px; color:#aaa; margin-bottom:14px;">配角不属于可玩角色，不会占用剧本玩家人数，但会出现在关系网、时间线与 AI 生成的剧情中。</p>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-sm" style="flex:1; text-align:center; padding:9px;" onclick="closeNpcEditor()">取消</button>
+            <button class="btn-sm" style="flex:2; text-align:center; padding:9px; background:linear-gradient(90deg,#8E2DE2,#4A00E0); color:#fff; border:none;" onclick="saveNpcEditor()">✅ 保存配角</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let roles = [], acts = ["第一幕", "第二幕"], actsPublicContent = ["", ""], clues = [], currentCoverUrl = "";
     let currentRoleIdx = -1;
@@ -610,7 +663,8 @@
         box.innerHTML = timelineEvents.map(e => {
             const peopleHtml = (e.people || []).map(n => `<span class="tl-person" title="点击移除" onclick="timelineTogglePerson('${e.id}', ${JSON.stringify(n).replace(/"/g, '&quot;')})">${escHtml(n)} ✕</span>`).join('')
                 || '<span style="font-size:11px; color:#777;">未选择人物</span>';
-            const roleOpts = roles.map(r => `<option value="${escAttr(r.name)}" ${(e.people||[]).includes(r.name) ? 'selected' : ''}>${escHtml(r.name)}</option>`).join('');
+            const roleOpts = roles.map(r => `<option value="${escAttr(r.name)}" ${(e.people||[]).includes(r.name) ? 'selected' : ''}>${escHtml(r.name)}</option>`)
+                .concat((npcData||[]).map(np => `<option value="${escAttr(np.name)}" ${(e.people||[]).includes(np.name) ? 'selected' : ''}>🤖 ${escHtml(np.name)}</option>`)).join('');
             const actOpts = acts.map((a, i) => `<option value="${i}" ${e.actIdx === i ? 'selected' : ''}>${escHtml(a)}</option>`).join('');
             return `<div class="tl-item ${e.secret ? 'secret' : ''}" data-id="${e.id}">
                 <div class="tl-card">
@@ -656,6 +710,7 @@
         return {
             killer: g('metaKiller'), trick: g('metaTrick'),
             relations: relData,                  // 结构化关系图
+            npcs: npcData,                       // 配角/NPC
             timeline: timelineEvents,            // 结构化时间线
             other: g('metaOther')
         };
@@ -665,15 +720,26 @@
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
         set('metaKiller', m.killer); set('metaTrick', m.trick);
         set('metaOther', m.other);
+        // 配角载入
+        npcData = Array.isArray(m.npcs) ? m.npcs.map(np => ({
+            id: np.id || ('np' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)),
+            name: np.name || '配角', avatar: np.avatar || '', intro: np.intro || ''
+        })) : [];
         // 关系图：兼容旧版字符串草稿（尝试解析为节点/边），新版对象直接载入
         if (m.relations && typeof m.relations === 'object' && !Array.isArray(m.relations) && m.relations.edges) {
             relData = {
-                nodes: (m.relations.nodes || []).map(n => ({
-                    id: n.id || ('r' + (n.roleIdx||0)),
-                    roleIdx: n.roleIdx !== undefined ? n.roleIdx : 0,
-                    x: (n.x !== undefined && n.y !== undefined) ? n.x : undefined,
-                    y: (n.x !== undefined && n.y !== undefined) ? n.y : undefined
-                })),
+                nodes: (m.relations.nodes || []).map(n => {
+                    // 推断 kind：id 以 npc: 开头或含 kind==='npc' 视为配角
+                    const isNpc = n.kind === 'npc' || String(n.id || '').indexOf('npc:') === 0;
+                    return {
+                        id: n.id,
+                        kind: isNpc ? 'npc' : 'role',
+                        roleIdx: !isNpc && n.roleIdx !== undefined ? n.roleIdx : (String(n.id || '').indexOf('r') === 0 ? parseInt(String(n.id).slice(1)) : 0),
+                        npcId: isNpc ? (n.npcId || String(n.id).slice(4)) : undefined,
+                        x: (n.x !== undefined && n.y !== undefined) ? n.x : undefined,
+                        y: (n.x !== undefined && n.y !== undefined) ? n.y : undefined
+                    };
+                }),
                 edges: (m.relations.edges || []).map(e => ({
                     id: e.id || ('e' + Math.random().toString(36).slice(2)),
                     from: e.from, to: e.to, type: e.type || '旧识',
@@ -692,6 +758,7 @@
             relData = { nodes: [], edges: [] };
         }
         relRenderFromData();
+        renderNpcChips();
         // 时间线：兼容旧字符串草稿 → 转事件；新数组 → 直接载入
         if (Array.isArray(m.timeline)) {
             timelineEvents = m.timeline.map(e => ({
@@ -769,6 +836,11 @@
         const parts = [];
         if (m.killer) parts.push('真凶：' + m.killer);
         if (m.trick) parts.push('核心诡计：' + m.trick);
+        // 配角名单
+        if (m.npcs && m.npcs.length) {
+            const npcLines = m.npcs.map(np => (np.intro ? `- ${np.name}（配角/NPC）：${np.intro}` : `- ${np.name}（配角/NPC）`));
+            parts.push('配角/NPC（非玩家角色，出现在剧情与关系网中）：\n' + npcLines.join('\n'));
+        }
         // 关系图 → 结构化文本（AI 友好，含可见性约束）
         if (m.relations && m.relations.edges && m.relations.edges.length) {
             const relLines = m.relations.edges.map(e => {
@@ -871,6 +943,8 @@
         const intro = document.getElementById('scriptIntro').value;
         const truth = document.getElementById('scriptTruth') ? document.getElementById('scriptTruth').value : '';
         const rolesBrief = roles.map((r, i) => ({ name: r.name, intro: r.intro, actsContent: r.actsContent || [] }));
+        // 配角也纳入上下文（标注 npc，便于 AI 认识并遵守关系网）
+        (npcData || []).forEach(np => rolesBrief.push({ name: np.name, intro: '【配角/NPC】' + (np.intro || ''), npc: true, actsContent: [] }));
         const ctx = {
             title: title, intro: intro, truth: truth,
             acts: acts,
@@ -1527,9 +1601,10 @@
             btn.innerText = r.name; btn.onclick = () => { currentRoleIdx = i; render(); };
             nav.appendChild(btn);
         });
-        // 刷新真凶候选角色
+        // 刷新真凶候选角色（玩家 + 配角）
         const dl = document.getElementById('killerRoleList');
-        if (dl) dl.innerHTML = roles.map(r => `<option value="${escAttr(r.name)}">`).join('');
+        if (dl) dl.innerHTML = roles.map(r => `<option value="${escAttr(r.name)}">`).join('')
+            + (npcData || []).map(np => `<option value="${escAttr(np.name)}">`).join('');
 
         if (currentRoleIdx === -1) {
             let pubHtml = `
@@ -1598,9 +1673,10 @@
 
     function updateNavName() {
         document.querySelectorAll('.nav-item')[currentRoleIdx + 1].innerText = roles[currentRoleIdx].name;
-        // 同步真凶 datalist
+        // 同步真凶 datalist（玩家 + 配角）
         const dl = document.getElementById('killerRoleList');
-        if (dl) dl.innerHTML = roles.map(r => `<option value="${escAttr(r.name)}">`).join('');
+        if (dl) dl.innerHTML = roles.map(r => `<option value="${escAttr(r.name)}">`).join('')
+            + (npcData || []).map(np => `<option value="${escAttr(np.name)}">`).join('');
         renderEndings();
         if (window.relSyncNames) relSyncNames();
     }
@@ -1923,6 +1999,7 @@
         renderAiHistory();
         renderTimeline();
         initRelGraph();
+        renderNpcChips();
     };
 </script>
 <!-- 🧩 人物关系图 Cytoscape（本地库） -->
@@ -1930,17 +2007,22 @@
 <script>
     // ==================== 🧩 人物关系图 ====================
     let relCy = null;
-    let relData = { nodes: [], edges: [] };   // { nodes:[{id,roleIdx}], edges:[{id,from,to,type,label,direction,visibility}] }
+    let relData = { nodes: [], edges: [] };   // { nodes:[{id,kind:'role'|'npc',roleIdx?,npcId?}], edges:[...] }
+    let npcData = [];                          // 配角/NPC: [{id,name,avatar,intro}]
+    let npcEditingAvatar = '';
     let relLinkSource = null;                  // 连线模式的源节点 id
     let relEditingEdgeId = null;               // 正在编辑的边 id
     const REL_TYPE_COLOR = { '仇人':'#ff5252','恋人':'#ff7ab8','亲人':'#ffd54f','同谋':'#ab47bc','师徒':'#66bb6a','上下级':'#8d6e63','旧识':'#90a4ae','好友':'#26c6da','情敌':'#ff7043','交易':'#ffb300','隐瞒':'#b0bec5','自定义':'#b39ddb' };
     const REL_TYPE_DEFAULT = '旧识';
 
-    // 角色数量变化后：丢弃指向已删角色的节点/边，但不自动补（由人物库拖入）
+    // 角色/配角数量变化后：丢弃指向已删角色的节点/边，但不自动补（由人物库拖入）
     function relRebuildForRoles() {
-        const validIds = new Set(roles.map((_, i) => 'r' + i));
-        relData.nodes = relData.nodes.filter(n => validIds.has(n.id));
-        relData.edges = relData.edges.filter(e => validIds.has(e.from) && validIds.has(e.to));
+        const roleIds = new Set(roles.map((_, i) => 'r' + i));
+        const npcIds = new Set(npcData.map(np => 'npc:' + np.id));
+        relData.nodes = relData.nodes.filter(n => n.kind === 'npc' ? npcIds.has(n.id) : roleIds.has(n.id));
+        relData.edges = relData.edges.filter(e =>
+            (roleIds.has(e.from) || npcIds.has(e.from)) && (roleIds.has(e.to) || npcIds.has(e.to))
+        );
         relRenderFromData();
         scheduleDraftSave();
     }
@@ -1958,7 +2040,7 @@
             style: [
                 { selector: 'node', style: {
                     'background-color': '#1e3a5f', 'background-image': 'data(avatar)', 'background-fit': 'cover',
-                    'background-clip': 'none', 'background-opacity': 1,
+                    'background-clip': 'node', 'background-opacity': 1,
                     'border-color': '#00e5ff', 'border-width': 2,
                     'width': 56, 'height': 56, 'shape': 'ellipse',
                     'label': 'data(label)', 'color': '#fff', 'font-size': 11, 'text-valign': 'bottom', 'text-margin-y': 14,
@@ -1967,6 +2049,7 @@
                     'overlay-opacity': 0
                 }},
                 { selector: 'node.selected', style: { 'border-width': 4, 'border-color': '#ffcc00' } },
+                { selector: 'node.npc', style: { 'border-color': '#b39ddb', 'border-width': 2, 'border-style': 'dashed' } },
                 { selector: 'edge', style: {
                     'width': 2.5, 'line-color': '#7fa8c9', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#7fa8c9',
                     'curve-style': 'bezier', 'label': 'data(label)', 'color': '#e0e0e0', 'font-size': 10,
@@ -1996,12 +2079,17 @@
         // 空白拖拽平移默认开启；节点拖拽开启
         relCy.userZoomingEnabled(true); relCy.userPanningEnabled(true);
 
-        // 画布接收从人物库拖入的角色
-        bindRelDrop();
-
         // 载入已有关系数据（先由 writeMeta 填充 relData 再调用）
         relRenderFromData();
         bindRelEvents();
+    }
+
+    // —— 取某节点(role/npc)的角色数据 ——
+    function relNodeActor(n) {
+        if (!n) return null;
+        if (n.kind === 'npc') { const npc = npcData.find(x => x.id === n.npcId); return npc ? { name: npc.name, avatar: npc.avatar || '', isNpc: true } : null; }
+        const role = roles[n.roleIdx];
+        return role ? { name: role.name, avatar: role.avatar || '', isNpc: false } : null;
     }
 
     // —— 把 relData 渲染进画布（只画已有节点，恢复位置，不自动塞角色）——
@@ -2009,10 +2097,14 @@
         if (!relCy) return;
         const elems = [];
         relData.nodes.forEach(n => {
-            const role = roles[n.roleIdx];
-            const avatar = role && role.avatar ? role.avatar : '';
+            const actor = relNodeActor(n);
+            const avatar = actor ? actor.avatar : '';
             const pos = (n.x !== undefined && n.y !== undefined) ? { x: n.x, y: n.y } : undefined;
-            elems.push({ data: { id: n.id, label: role ? role.name : '角色' + (n.roleIdx + 1), avatar: avatar }, position: pos });
+            elems.push({
+                data: { id: n.id, kind: n.kind || 'role', label: actor ? actor.name : ('#' + n.id), avatar: avatar },
+                classes: (n.kind === 'npc' ? 'npc' : 'role'),
+                position: pos
+            });
         });
         relData.edges.forEach(e => {
             elems.push({ data: { id: e.id, source: e.from, target: e.to, label: e.label || e.type || '' }, classes: e.visibility === 'hidden' ? 'hiddenRel' : '' });
@@ -2028,35 +2120,115 @@
         renderRelPalette();
     }
 
-    // —— 人物库渲染：头像 + 名字，鼠标拖放/点击放入画布 ——
+    // —— 人物库渲染：玩家角色组 + 配角组，鼠标拖放/点击放入画布 ——
     function renderRelPalette() {
-        const box = document.getElementById('relPalette');
-        if (!box) return;
+        // 玩家角色
+        const boxRole = document.getElementById('relPaletteRole');
+        const boxNpc = document.getElementById('relPaletteNpc');
         const inGraph = new Set(relData.nodes.map(n => n.id));
-        box.innerHTML = roles.map((r, i) => {
-            const avatar = r.avatar && r.avatar !== '' ? r.avatar : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 fill=%27%231e3a5f%27/%3E%3Ctext x=%2750%27 y=%2762%27 text-anchor=%27middle%27 font-size=%2734%27 fill=%27%2300e5ff%27%3E' + encodeURIComponent((r.name||'?').slice(0,1)) + '%3C/text%3E%3C/svg%3E';
-            const inGraphCls = inGraph.has('r' + i) ? ' in-graph' : '';
-            return `<div class="pal-item${inGraphCls}" data-ridx="${i}" title="${inGraph.has('r'+i) ? '已在图中（双击图中的节点可移除）' : '按住拖到画布，或单击快速放入'}">
-                <img class="pal-avatar" src="${escAttr(avatar)}" onerror="this.style.visibility='hidden';" draggable="false">
-                <span class="pal-name">${escHtml(r.name)}${inGraph.has('r'+i) ? ' ✓' : ''}</span>
-            </div>`;
-        }).join('');
-        // 自实现拖放（不依赖 HTML5 DnD，兼容性最好）
-        box.querySelectorAll('.pal-item').forEach(item => {
-            const ridx = parseInt(item.dataset.ridx);
-            item.addEventListener('mousedown', ev => {
-                if (relData.nodes.some(n => n.roleIdx === ridx)) return; // 已在图中
-                ev.preventDefault();
-                relPaletteDragStart(ev, ridx, item);
+        if (boxRole) {
+            boxRole.innerHTML = roles.map((r, i) => {
+                const id = 'r' + i;
+                const avatar = r.avatar && r.avatar !== '' ? r.avatar : relDefaultAvatar(r.name || '角', '#1e3a5f');
+                const inGraphCls = inGraph.has(id) ? ' in-graph' : '';
+                return `<div class="pal-item${inGraphCls}" data-kind="role" data-ridx="${i}" title="${inGraph.has(id) ? '已在图中（双击节点可移除）' : '按住拖到画布，或单击快速放入'}">
+                    <img class="pal-avatar" src="${escAttr(avatar)}" onerror="this.style.visibility='hidden';" draggable="false">
+                    <span class="pal-name">${escHtml(r.name)}${inGraph.has(id) ? ' ✓' : ''}</span>
+                </div>`;
+            }).join('');
+            boxRole.querySelectorAll('.pal-item').forEach(item => {
+                const ridx = parseInt(item.dataset.ridx);
+                item.addEventListener('mousedown', ev => { if (!inGraph.has('r' + ridx)) { ev.preventDefault(); relPaletteDragStart(ev, { kind: 'role', roleIdx: ridx }, item); } });
             });
-        });
+        }
+        // 配角
+        if (boxNpc) {
+            const keepTitle = boxNpc.querySelector('.pal-group-title');
+            boxNpc.innerHTML = '';
+            if (keepTitle) boxNpc.appendChild(keepTitle);
+            npcData.forEach((np, i) => {
+                const id = 'npc:' + np.id;
+                const avatar = np.avatar || relDefaultAvatar(np.name || '配', '#3a2350');
+                const inGraphCls = inGraph.has(id) ? ' in-graph' : '';
+                const chip = document.createElement('div');
+                chip.className = 'pal-item npc-item' + inGraphCls;
+                chip.dataset.kind = 'npc'; chip.dataset.npcIdx = String(i);
+                chip.title = inGraph.has(id) ? '已在图中（双击节点可移除）' : '按住拖到画布，或单击快速放入';
+                chip.innerHTML = `<img class="pal-avatar" src="${escAttr(avatar)}" onerror="this.style.visibility='hidden';" draggable="false">
+                    <span class="pal-name">${escHtml(np.name)}${inGraph.has(id) ? ' ✓' : ''}</span>`;
+                if (!inGraph.has(id)) {
+                    chip.addEventListener('mousedown', ev => { ev.preventDefault(); relPaletteDragStart(ev, { kind: 'npc', npcIdx: i }, chip); });
+                }
+                boxNpc.appendChild(chip);
+            });
+        }
+    }
+
+    function relDefaultAvatar(name, color) {
+        const c = encodeURIComponent((name || '?').slice(0, 1));
+        return 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 fill=%27' + color.replace('#','%23') + '%27/%3E%3Ctext x=%2750%27 y=%2762%27 text-anchor=%27middle%27 font-size=%2734%27 fill=%27%23ffffff%27%3E' + c + '%3C/text%3E%3C/svg%3E';
+    }
+
+    // —— 配角/NPC 管理 ——
+    function openNpcEditor() {
+        npcEditingAvatar = '';
+        document.getElementById('npcName').value = '';
+        document.getElementById('npcIntro').value = '';
+        document.getElementById('npcAvatarPreview').src = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 fill=%27%233a2350%27/%3E%3Ctext x=%2750%27 y=%2762%27 text-anchor=%27middle%27 font-size=%2734%27 fill=%27%23b39ddb%27%3E🤖%3C/text%3E%3C/svg%3E';
+        document.getElementById('npcModal').style.display = 'flex';
+    }
+    function closeNpcEditor() { document.getElementById('npcModal').style.display = 'none'; }
+    async function handleNpcAvatar(input) {
+        if (input.files[0]) {
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            try {
+                const res = await fetch('/api/game/upload', { method: 'POST', body: formData }).then(r => r.json());
+                if (res.success) {
+                    npcEditingAvatar = res.data;
+                    document.getElementById('npcAvatarPreview').src = res.data;
+                } else alert('上传失败：' + res.msg);
+            } catch (e) { alert('上传异常'); }
+        }
+    }
+    function saveNpcEditor() {
+        const name = document.getElementById('npcName').value.trim();
+        if (!name) { alert('请填写配角名称'); return; }
+        const intro = document.getElementById('npcIntro').value.trim();
+        const id = 'np' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+        npcData.push({ id: id, name: name, avatar: npcEditingAvatar, intro: intro });
+        closeNpcEditor();
+        renderRelPalette();
+        renderNpcChips();
+        scheduleDraftSave();
+        relHint('已添加配角「' + name + '」，可拖入画布建立关系');
+    }
+    function deleteNpc(npcId) {
+        const npc = npcData.find(x => x.id === npcId);
+        if (!npc) return;
+        if (!confirm('删除配角「' + npc.name + '」？\n（其关系图中的节点与关系线将一并删除）')) return;
+        const nodeId = 'npc:' + npcId;
+        npcData = npcData.filter(x => x.id !== npcId);
+        relData.nodes = relData.nodes.filter(n => !(n.kind === 'npc' && n.npcId === npcId));
+        relData.edges = relData.edges.filter(e => e.from !== nodeId && e.to !== nodeId);
+        if (relCy) { relCy.getElementById(nodeId).remove(); }
+        renderRelPalette();
+        renderNpcChips();
+        scheduleDraftSave();
+    }
+    // 配角列表（设定卡下方小 chips，可快速管理）
+    function renderNpcChips() {
+        const box = document.getElementById('npcChipBox');
+        if (!box) return;
+        box.innerHTML = npcData.length
+            ? npcData.map(np => `<span class="npc-chip"><img src="${escAttr(np.avatar || relDefaultAvatar(np.name, '#3a2350'))}" onerror="this.style.visibility='hidden';"><span class="npc-chip-name" title="${escAttr(np.intro || '')}">${escHtml(np.name)}</span><span class="npc-chip-del" onclick="deleteNpc('${np.id}')" title="删除配角">✕</span></span>`).join('')
+            : '';
     }
 
     // —— 人物库 → 画布 拖放（纯鼠标事件实现）——
-    let relDrag = null; // { ridx, dx, dy, startX, startY, moved, ghost }
-    function relPaletteDragStart(ev, ridx, item) {
+    let relDrag = null; // { actor, dx, dy, startX, startY, moved, ghost }
+    function relPaletteDragStart(ev, actor, item) {
         const rect = item.getBoundingClientRect();
-        // 幽灵副本：跟随鼠标，让用户看到在拖谁
         const ghost = item.cloneNode(true);
         ghost.className = 'pal-item rel-drag-ghost';
         ghost.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;box-shadow:0 8px 24px rgba(0,229,255,.4);opacity:.9;';
@@ -2064,7 +2236,7 @@
         ghost.style.top = rect.top + 'px';
         ghost.style.width = rect.width + 'px';
         document.body.appendChild(ghost);
-        relDrag = { ridx: ridx, dx: ev.clientX - rect.left, dy: ev.clientY - rect.top, startX: ev.clientX, startY: ev.clientY, moved: false, ghost: ghost };
+        relDrag = { actor: actor, dx: ev.clientX - rect.left, dy: ev.clientY - rect.top, startX: ev.clientX, startY: ev.clientY, moved: false, ghost: ghost };
         document.addEventListener('mousemove', relPaletteDragMove);
         document.addEventListener('mouseup', relPaletteDragEnd);
     }
@@ -2089,43 +2261,12 @@
         const rect = container.getBoundingClientRect();
         const inCanvas = ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom;
         if (drag.moved && inCanvas) {
-            // 拖动后松手在画布内 → 放在落点
             const modelPos = relRenderedToModel(ev.clientX - rect.left, ev.clientY - rect.top);
-            relAddRole(drag.ridx, modelPos);
-        } else if (!drag.moved && inCanvas) {
-            // 按下即松（未拖动）且落在画布 → 放入画布中心
-            relAddRoleAtCenter(drag.ridx);
-        } else if (!drag.moved) {
-            // 未拖动且没落在画布 → 视为单击，也放入（方便无拖拽习惯）
-            relAddRoleAtCenter(drag.ridx);
+            relAddActor(drag.actor, modelPos);
+        } else {
+            // 未拖动（单击）→ 放入画布中心
+            relAddActorAtCenter(drag.actor);
         }
-    }
-
-    // —— 画布 drop：把角色放到落点 ——
-    function bindRelDrop() {
-        const container = document.getElementById('relGraph');
-        if (!container || !relCy) return;
-        container.addEventListener('dragover', ev => {
-            if (ev.dataTransfer && ev.dataTransfer.types && ev.dataTransfer.types.includes('text/rel-role')) {
-                ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy';
-                container.classList.add('drag-over');
-            }
-        });
-        container.addEventListener('dragleave', () => container.classList.remove('drag-over'));
-        container.addEventListener('drop', ev => {
-            container.classList.remove('drag-over');
-            const raw = ev.dataTransfer ? ev.dataTransfer.getData('text/rel-role') : '';
-            if (raw === '' || raw === undefined) return;
-            const ridx = parseInt(raw);
-            if (isNaN(ridx) || !roles[ridx]) return;
-            ev.preventDefault();
-            if (relData.nodes.some(n => n.roleIdx === ridx)) { relHint('该角色已在图中'); return; }
-            // 把落点屏幕坐标转成画布逻辑坐标
-            const rect = container.getBoundingClientRect();
-            const modelPos = relRenderedToModel(ev.clientX - rect.left, ev.clientY - rect.top);
-            relAddRole(ridx, modelPos);
-        });
-        // 画布内已有节点也可继续拖拽（Cytoscape 自带）
     }
 
     // —— 画布坐标换算：屏幕/渲染坐标 → 模型坐标（Cytoscape 无内置方法，手动换算）——
@@ -2141,33 +2282,43 @@
         if (h) { h.innerText = txt; setTimeout(() => { if (h.innerText === txt) h.innerText = '① 从人物库把角色拖进画布 ② 连线模式连关系'; }, 1800); }
     }
 
-    // —— 在指定坐标加入角色节点（不存在才加，保存位置）——
-    function relAddRole(ridx, pos) {
-        if (!roles[ridx]) return;
-        if (relData.nodes.some(n => n.roleIdx === ridx)) return;
-        const id = 'r' + ridx;
-        relData.nodes.push({ id: id, roleIdx: ridx, x: pos && pos.x !== undefined ? pos.x : undefined, y: pos && pos.y !== undefined ? pos.y : undefined });
-        const role = roles[ridx];
-        relCy.add({ data: { id: id, label: role.name, avatar: role.avatar || '' }, position: pos });
-        relCy.nodes('#' + id).style('border-color', '#00e5ff');
+    // —— 通用：把某个 actor（玩家角色/配角）加入画布 ——
+    function relActorNodeId(actor) {
+        return actor.kind === 'npc' ? 'npc:' + npcData[actor.npcIdx].id : 'r' + actor.roleIdx;
+    }
+    function relAddActor(actor, pos) {
+        if (actor.kind === 'npc') {
+            const npc = npcData[actor.npcIdx];
+            if (!npc) return;
+            const id = 'npc:' + npc.id;
+            if (relData.nodes.some(n => n.id === id)) return;
+            relData.nodes.push({ id: id, kind: 'npc', npcId: npc.id, x: pos && pos.x !== undefined ? pos.x : undefined, y: pos && pos.y !== undefined ? pos.y : undefined });
+            relCy.add({ data: { id: id, kind: 'npc', label: npc.name, avatar: npc.avatar || '' }, classes: 'npc', position: pos });
+        } else {
+            const ridx = actor.roleIdx;
+            if (!roles[ridx]) return;
+            if (relData.nodes.some(n => n.roleIdx === ridx)) return;
+            const id = 'r' + ridx;
+            relData.nodes.push({ id: id, kind: 'role', roleIdx: ridx, x: pos && pos.x !== undefined ? pos.x : undefined, y: pos && pos.y !== undefined ? pos.y : undefined });
+            const role = roles[ridx];
+            relCy.add({ data: { id: id, kind: 'role', label: role.name, avatar: role.avatar || '' }, position: pos });
+        }
         renderRelPalette();
         scheduleDraftSave();
     }
-    // 点击人物库角色时放入画布中心附近
-    function relAddRoleAtCenter(ridx) {
+    function relAddActorAtCenter(actor) {
         const container = document.getElementById('relGraph');
         const rect = container ? container.getBoundingClientRect() : null;
         let pos = undefined;
         if (relCy && rect) {
-            // 随机偏移，避免重叠
             const jx = (Math.random() - .5) * 120, jy = (Math.random() - .5) * 90;
             pos = relRenderedToModel(rect.width / 2 + jx, rect.height / 2 + jy);
         }
-        relAddRole(ridx, pos);
+        relAddActor(actor, pos);
     }
     // 一键放入全部角色（自动布局，随后保存布局位置）
     function relAddAllRoles() {
-        roles.forEach((_, i) => { if (!relData.nodes.some(n => n.roleIdx === i)) relData.nodes.push({ id: 'r' + i, roleIdx: i, x: undefined, y: undefined }); });
+        roles.forEach((_, i) => { if (!relData.nodes.some(n => n.id === 'r' + i)) relData.nodes.push({ id: 'r' + i, kind: 'role', roleIdx: i, x: undefined, y: undefined }); });
         relRenderFromData();
         relLayout('circle');
         relPersistPositions();
@@ -2267,9 +2418,9 @@
     // —— 删除图中的角色节点（连带其关系边）——
     function relRemoveNode(id) {
         const n = relData.nodes.find(x => x.id === id);
-        const role = n ? roles[n.roleIdx] : null;
-        const name = role ? role.name : id;
-        if (!confirm('从关系图中移除角色「' + name + '」？\n（仅移出关系图，不会删除剧本角色本身；其所有关系线将一并删除）')) return;
+        const actor = relNodeActor(n);
+        const name = actor ? actor.name : id;
+        if (!confirm('从关系图中移除「' + name + '」？\n（仅移出关系图，不会删除剧本角色/配角本身；其所有关系线将一并删除）')) return;
         relData.nodes = relData.nodes.filter(x => x.id !== id);
         relData.edges = relData.edges.filter(e => e.from !== id && e.to !== id);
         if (relCy) { relCy.getElementById(id).remove(); relCy.edges().forEach(edge => { const d = relData.edges.find(x => x.id === edge.id()); if (!d) edge.remove(); }); }
@@ -2345,17 +2496,22 @@
         if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => alert('关系图已复制为文本'));
         else prompt('关系图文本：', text);
     }
-    function relNodeName(id) { const n = relData.nodes.find(x => x.id === id); const r = n && roles[n.roleIdx]; return r ? r.name : id; }
+    function relNodeName(id) {
+        const n = relData.nodes.find(x => x.id === id);
+        if (!n) return id;
+        const actor = relNodeActor(n);
+        return actor ? actor.name : id;
+    }
 
     // 角色改名/删除同步
     function relSyncNames() {
         if (!relCy) return;
         relData.nodes.forEach(n => {
-            const role = roles[n.roleIdx];
+            const actor = relNodeActor(n);
             const cyNode = relCy.getElementById(n.id);
-            if (cyNode && cyNode.nonempty()) {
-                cyNode.data('label', role ? role.name : '');
-                cyNode.data('avatar', role && role.avatar ? role.avatar : '');
+            if (cyNode && cyNode.nonempty() && actor) {
+                cyNode.data('label', actor.name);
+                cyNode.data('avatar', actor.avatar || '');
             }
         });
         relCy.edges().forEach(edge => {
