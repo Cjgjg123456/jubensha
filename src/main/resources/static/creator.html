@@ -2086,7 +2086,7 @@
         const inCanvas = ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom;
         if (drag.moved && inCanvas) {
             // 拖动后松手在画布内 → 放在落点
-            const modelPos = relCy.renderedToModel({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+            const modelPos = relRenderedToModel(ev.clientX - rect.left, ev.clientY - rect.top);
             relAddRole(drag.ridx, modelPos);
         } else if (!drag.moved && inCanvas) {
             // 按下即松（未拖动）且落在画布 → 放入画布中心
@@ -2118,10 +2118,18 @@
             if (relData.nodes.some(n => n.roleIdx === ridx)) { relHint('该角色已在图中'); return; }
             // 把落点屏幕坐标转成画布逻辑坐标
             const rect = container.getBoundingClientRect();
-            const modelPos = relCy.renderedToModel({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+            const modelPos = relRenderedToModel(ev.clientX - rect.left, ev.clientY - rect.top);
             relAddRole(ridx, modelPos);
         });
         // 画布内已有节点也可继续拖拽（Cytoscape 自带）
+    }
+
+    // —— 画布坐标换算：屏幕/渲染坐标 → 模型坐标（Cytoscape 无内置方法，手动换算）——
+    function relRenderedToModel(x, y) {
+        if (!relCy) return { x: x, y: y };
+        const pan = relCy.pan();
+        const zoom = relCy.zoom();
+        return { x: (x - pan.x) / zoom, y: (y - pan.y) / zoom };
     }
 
     function relHint(txt) {
@@ -2149,7 +2157,7 @@
         if (relCy && rect) {
             // 随机偏移，避免重叠
             const jx = (Math.random() - .5) * 120, jy = (Math.random() - .5) * 90;
-            pos = relCy.renderedToModel({ x: rect.width / 2 + jx, y: rect.height / 2 + jy });
+            pos = relRenderedToModel(rect.width / 2 + jx, rect.height / 2 + jy);
         }
         relAddRole(ridx, pos);
     }
