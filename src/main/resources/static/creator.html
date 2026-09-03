@@ -118,6 +118,41 @@
         /* 版本历史入口（header） */
         .top-actions { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:18px; }
 
+        /* ====== ⏱️ 可视化时间线（纵向时间轴卡片） ====== */
+        .tl-editor { position: relative; padding: 6px 0 6px 26px; }
+        /* 纵向主轴 */
+        .tl-editor::before { content:''; position:absolute; left:9px; top:8px; bottom:8px; width:2px;
+            background: linear-gradient(180deg, rgba(0,229,255,.6), rgba(155,77,255,.6)); border-radius:1px; }
+        .tl-item { position:relative; margin-bottom:12px; animation: tlIn .3s ease; }
+        @keyframes tlIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+        /* 时间点圆点 */
+        .tl-item::before { content:''; position:absolute; left:-22px; top:14px; width:12px; height:12px; border-radius:50%;
+            background: #0b1a2a; border: 2px solid #00e5ff; box-shadow: 0 0 6px rgba(0,229,255,.5); }
+        .tl-item.secret::before { border-color:#ffb74d; box-shadow: 0 0 6px rgba(255,183,77,.55); }
+        .tl-card { background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-left:3px solid #00e5ff;
+            border-radius:10px; padding:10px 12px; transition: .2s; }
+        .tl-card:hover { border-color: rgba(0,229,255,.4); background: rgba(0,229,255,.05); }
+        .tl-item.secret .tl-card { border-left-color:#ffb74d; }
+        .tl-top { display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap; }
+        .tl-time { font-weight:bold; color:#4dd0e1; font-size:14px; }
+        .tl-time-input { min-width:52px; }
+        .tl-place { font-size:11px; background:rgba(255,255,255,.08); color:#ccc; padding:1px 7px; border-radius:8px; }
+        .tl-act { font-size:11px; background:rgba(255,152,0,.15); color:#ffb74d; padding:1px 7px; border-radius:8px; }
+        .tl-secret-tag { font-size:11px; background:rgba(255,152,0,.2); color:#ffcc80; padding:1px 7px; border-radius:8px; }
+        .tl-people { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:6px; }
+        .tl-people .tl-person { font-size:11px; background:rgba(155,77,255,.16); color:#d0a0ff; padding:1px 8px; border-radius:8px; }
+        .tl-event { width:100%; background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.1); color:#eee;
+            border-radius:6px; padding:6px 10px; outline:none; font-size:13px; resize:none; overflow:hidden; }
+        .tl-tools { display:flex; align-items:center; gap:6px; margin-top:6px; flex-wrap:wrap; }
+        .tl-tools select, .tl-tools input { background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.15); color:#eee;
+            border-radius:6px; padding:3px 8px; font-size:12px; outline:none; }
+        .tl-tools select:focus, .tl-tools input:focus { border-color:#00e5ff; }
+        .tl-role-multi { flex:1; min-width:140px; }
+        .tl-secret-toggle { cursor:pointer; user-select:none; font-size:12px; padding:3px 10px; border-radius:8px;
+            background:rgba(255,255,255,.05); color:#aaa; border:1px solid rgba(255,255,255,.12); transition:.2s; }
+        .tl-secret-toggle.on { background:rgba(255,152,0,.18); color:#ffcc80; border-color:rgba(255,152,0,.5); }
+        .tl-del { margin-left:auto; }
+
         /* ====== 草稿恢复横幅 ====== */
         .draft-banner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 950; background: rgba(30,30,55,.96); border:1px solid #9b4dff;
             color:#eee; padding: 12px 20px; border-radius: 14px; font-size: 14px; display: flex; gap: 16px; align-items: center; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
@@ -206,8 +241,16 @@
                     <textarea id="metaRelations" class="meta-input grow" rows="2" placeholder="例：沈木榫是温知夏失散多年的哥哥；苏清砚与温知夏是情敌…" oninput="autosize(this); scheduleDraftSave();"></textarea>
                 </div>
                 <div class="full">
-                    <label class="meta-label">⏱️ 关键时间线（可写多条，每行一条）</label>
-                    <textarea id="metaTimeline" class="meta-input grow" rows="3" placeholder="例：20:00 沈木榫进入书房&#10;20:15 温知夏看见苏清砚从走廊尽头离开&#10;20:30 案发…" oninput="autosize(this); scheduleDraftSave();"></textarea>
+                    <label class="meta-label" style="display:flex; align-items:center; gap:8px;">
+                        ⏱️ 关键时间线
+                        <span style="font-weight:normal; color:#888; font-size:12px;">（可视化时间轴，AI 会按此事件顺序创作）</span>
+                        <button type="button" class="ai-mini" style="margin-left:auto; font-size:12px; padding:1px 8px;" onclick="timelineSort()">↕ 按时间排序</button>
+                    </label>
+                    <div id="timelineEditor" class="tl-editor"></div>
+                    <div style="margin-top:8px;">
+                        <button class="btn-sm" style="border-color:rgba(0,229,255,.4); color:#4dd0e1;" onclick="timelineAdd()">➕ 添加时间事件</button>
+                        <button class="btn-sm" onclick="timelineDumpText()" title="把当前时间线转为纯文本，便于复制或旧版兼容">📄 导出纯文本</button>
+                    </div>
                 </div>
                 <div class="full">
                     <label class="meta-label">📝 其他关键设定 / 伏笔要求</label>
@@ -415,19 +458,153 @@
         if (wc) wc.textContent = el.value.replace(/\s/g, '').length + ' 字';
     }
 
+    // ==================== ⏱️ 可视化时间线（纵向时间轴卡片） ====================
+    // 数据模型: { id, time, place, actIdx, people:[角色名], event, secret }
+    let timelineEvents = [];
+
+    function timelineGenId() { return 'tl_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+    function timelineAdd(prefill) {
+        prefill = prefill || {};
+        timelineEvents.push({
+            id: prefill.id || timelineGenId(),
+            time: prefill.time || '',
+            place: prefill.place || '',
+            actIdx: prefill.actIdx !== undefined ? prefill.actIdx : (acts.length ? 0 : -1),
+            people: prefill.people || [],
+            event: prefill.event || '',
+            secret: prefill.secret ? true : false
+        });
+        renderTimeline();
+        scheduleDraftSave();
+    }
+
+    function timelineRemove(id) {
+        timelineEvents = timelineEvents.filter(e => e.id !== id);
+        renderTimeline();
+        scheduleDraftSave();
+    }
+    function timelineMove(id, dir) {
+        const i = timelineEvents.findIndex(e => e.id === id);
+        const j = i + dir;
+        if (i < 0 || j < 0 || j >= timelineEvents.length) return;
+        const tmp = timelineEvents[i]; timelineEvents[i] = timelineEvents[j]; timelineEvents[j] = tmp;
+        renderTimeline();
+        scheduleDraftSave();
+    }
+    function timelineSort() {
+        // 按 time 字符串自然排序（20:00 < 21:00；带日期也尽量合理）
+        timelineEvents.sort((a, b) => String(a.time || '').localeCompare(String(b.time || ''), 'zh-Hans-CN', { numeric: true }));
+        renderTimeline();
+        scheduleDraftSave();
+    }
+    function timelineToggleSecret(id) {
+        const e = timelineEvents.find(x => x.id === id);
+        if (e) { e.secret = !e.secret; renderTimeline(); scheduleDraftSave(); }
+    }
+    // 人员多选框（角色列表）
+    function timelineTogglePerson(id, name) {
+        const e = timelineEvents.find(x => x.id === id);
+        if (!e) return;
+        if (!Array.isArray(e.people)) e.people = [];
+        const i = e.people.indexOf(name);
+        if (i >= 0) e.people.splice(i, 1); else e.people.push(name);
+        renderTimeline();
+        scheduleDraftSave();
+    }
+    function timelineDumpText() {
+        const lines = timelineEvents.map(e => {
+            const tag = e.secret ? '[私密]' : '[公开]';
+            const who = (e.people || []).join('、');
+            const act = e.actIdx >= 0 && acts[e.actIdx] ? acts[e.actIdx] : '';
+            return `${e.time || '??:??'} ${e.place || ''} ${act ? '(' + act + ')' : ''} ${tag} ${who ? '[' + who + ']' : ''} ${e.event || ''}`.replace(/\s+/g, ' ').trim();
+        }).filter(Boolean);
+        const text = lines.join('\n');
+        if (navigator.clipboard) { navigator.clipboard.writeText(text).then(() => alert('时间线已复制为纯文本')); }
+        else { prompt('时间线纯文本（可复制）：', text); }
+    }
+
+    function renderTimeline() {
+        const box = document.getElementById('timelineEditor');
+        if (!box) return;
+        const empty = timelineEvents.length === 0;
+        if (empty) {
+            box.innerHTML = '<div style="color:#666; font-size:13px; padding:10px 2px;">还没有时间事件。点下方"➕ 添加时间事件"，按时间顺序记录关键节点（如案发时刻、每个人的行踪），AI 会严格遵循。也可先<a href="javascript:timelineFromText()" style="color:#4dd0e1;">从文本导入</a>。</div>';
+            return;
+        }
+        box.innerHTML = timelineEvents.map(e => {
+            const peopleHtml = (e.people || []).map(n => `<span class="tl-person" title="点击移除" onclick="timelineTogglePerson('${e.id}', ${JSON.stringify(n).replace(/"/g, '&quot;')})">${escHtml(n)} ✕</span>`).join('')
+                || '<span style="font-size:11px; color:#777;">未选择人物</span>';
+            const roleOpts = roles.map(r => `<option value="${escAttr(r.name)}" ${(e.people||[]).includes(r.name) ? 'selected' : ''}>${escHtml(r.name)}</option>`).join('');
+            const actOpts = acts.map((a, i) => `<option value="${i}" ${e.actIdx === i ? 'selected' : ''}>${escHtml(a)}</option>`).join('');
+            return `<div class="tl-item ${e.secret ? 'secret' : ''}" data-id="${e.id}">
+                <div class="tl-card">
+                    <div class="tl-top">
+                        <input class="tl-time-input" style="width:64px; background:transparent; border:none; border-bottom:1px dashed rgba(255,255,255,.25); color:#4dd0e1; font-weight:bold; font-size:14px; outline:none;" value="${escAttr(e.time)}" placeholder="20:00" title="时间" oninput="timelineEvents.find(x=>x.id==='${e.id}').time=this.value; scheduleDraftSave();">
+                        <input class="tl-place" style="border:none; outline:none; background:transparent; color:#ccc;" value="${escAttr(e.place)}" placeholder="地点（可选）" oninput="timelineEvents.find(x=>x.id==='${e.id}').place=this.value; scheduleDraftSave();">
+                        <select class="tl-act" onchange="timelineEvents.find(x=>x.id==='${e.id}').actIdx=parseInt(this.value); scheduleDraftSave();">${actOpts || '<option value="-1">无幕</option>'}</select>
+                        ${e.secret ? '<span class="tl-secret-tag">🔒 私密</span>' : ''}
+                    </div>
+                    <div class="tl-people">${peopleHtml}
+                        <select class="tl-role-multi" onchange="if(this.value){ timelineTogglePerson('${e.id}', this.value); this.value=''; }">
+                            <option value="">+ 关联人物</option>${roleOpts}</select>
+                    </div>
+                    <textarea class="tl-event grow" rows="1" placeholder="描述这一时间点发生的事件…（AI 创作时会严格遵守时间线顺序与私密性）" oninput="timelineEvents.find(x=>x.id==='${e.id}').event=this.value; autosize(this); scheduleDraftSave();">${escHtml(e.event)}</textarea>
+                    <div class="tl-tools">
+                        <button type="button" class="tl-secret-toggle ${e.secret ? 'on' : ''}" onclick="timelineToggleSecret('${e.id}')">${e.secret ? '🔒 已设为私密（仅相关角色可见）' : '🔓 公开事件'}</button>
+                        <button class="btn-sm" onclick="timelineMove('${e.id}', -1)" title="上移">↑</button>
+                        <button class="btn-sm" onclick="timelineMove('${e.id}', 1)" title="下移">↓</button>
+                        <button class="btn-sm warn tl-del" onclick="timelineRemove('${e.id}')">🗑 删除</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+        autosizeAll(box);
+    }
+
+    // 旧文本兼容：把多行纯文本转成事件
+    function timelineFromText() {
+        const old = prompt('粘贴旧版纯文本时间线（每行一个事件，如：20:00 书房 沈木榫开始布置机关）：');
+        if (!old) return;
+        old.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => {
+            const m = l.match(/^(\d{1,2}[:：]\d{2})?\s*(.*)$/);
+            const time = m && m[1] ? m[1].replace('：', ':') : '';
+            const rest = m ? m[2] : l;
+            timelineAdd({ time: time, event: rest });
+        });
+        renderTimeline();
+    }
+
     // —— 故事设定卡读写 ——
     function readMeta() {
         const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
         return {
             killer: g('metaKiller'), trick: g('metaTrick'),
-            relations: g('metaRelations'), timeline: g('metaTimeline'), other: g('metaOther')
+            relations: g('metaRelations'),
+            timeline: timelineEvents,          // 结构化数组
+            other: g('metaOther')
         };
     }
     function writeMeta(m) {
         m = m || {};
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
         set('metaKiller', m.killer); set('metaTrick', m.trick);
-        set('metaRelations', m.relations); set('metaTimeline', m.timeline); set('metaOther', m.other);
+        set('metaRelations', m.relations); set('metaOther', m.other);
+        // 时间线：兼容旧字符串草稿 → 转事件；新数组 → 直接载入
+        if (Array.isArray(m.timeline)) {
+            timelineEvents = m.timeline.map(e => ({
+                id: e.id || timelineGenId(), time: e.time || '', place: e.place || '',
+                actIdx: e.actIdx !== undefined ? e.actIdx : -1,
+                people: e.people || [], event: e.event || '', secret: !!e.secret
+            }));
+        } else if (typeof m.timeline === 'string' && m.timeline.trim()) {
+            timelineEvents = m.timeline.split('\n').map(l => l.trim()).filter(Boolean).map(l => ({
+                id: timelineGenId(), time: '', place: '', actIdx: -1, people: [], event: l, secret: false
+            }));
+        } else {
+            timelineEvents = [];
+        }
+        renderTimeline();
         autosizeAll(document.getElementById('metaSection'));
     }
     function metaToText() {
@@ -436,7 +613,16 @@
         if (m.killer) parts.push('真凶：' + m.killer);
         if (m.trick) parts.push('核心诡计：' + m.trick);
         if (m.relations) parts.push('人物关系：' + m.relations);
-        if (m.timeline) parts.push('关键时间线：\n' + m.timeline);
+        // 时间线：按时间顺序输出结构化行（AI 友好）
+        if (m.timeline && m.timeline.length) {
+            const sorted = [...m.timeline].sort((a, b) => String(a.time || '').localeCompare(String(b.time || ''), 'zh-Hans-CN', { numeric: true }));
+            const lines = sorted.map(e => {
+                const who = (e.people || []).join('、');
+                const act = e.actIdx >= 0 && acts[e.actIdx] ? acts[e.actIdx] : '';
+                return `- ${e.time || '??:??'} ${e.place ? e.place + ' ' : ''}${act ? '(' + act + ') ' : ''}${e.secret ? '【私密】' : ''}${who ? '[' + who + '] ' : ''}${e.event || ''}`.replace(/\s+/g, ' ').trim();
+            }).filter(Boolean);
+            parts.push('关键时间线（严格按此顺序与私密性创作，私密事件只允许相关角色知晓）：\n' + lines.join('\n'));
+        }
         if (m.other) parts.push('其他设定：' + m.other);
         return parts.join('\n');
     }
@@ -1563,6 +1749,7 @@
         }
         autosizeAll();
         renderAiHistory();
+        renderTimeline();
     };
 </script>
 </body>
