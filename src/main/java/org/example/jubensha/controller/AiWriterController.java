@@ -43,7 +43,10 @@ public class AiWriterController {
             // 按任务构造 system + user 消息
             List<Map<String, String>> messages = buildMessages(task, contextText, instruction);
 
-            int maxTokens = "rolesView".equals(task) || "clues".equals(task) ? 2500 : 1800;
+            // ⚠️ deepseek-v4-pro 是推理模型：推理(reasoning_content)与正文共享 max_tokens，
+            //    2500 会被推理耗尽导致 content 为空。必须给足额度：
+            //    续写/润色等正文任务 8000；rolesView/clues 推理与输出量更大用 12000
+            int maxTokens = ("rolesView".equals(task) || "clues".equals(task)) ? 12000 : 8000;
             String reply = aiService.generateChatReply(messages, maxTokens);
 
             Map<String, Object> data = new HashMap<>();

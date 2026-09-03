@@ -43,10 +43,11 @@ public class AiServiceImpl implements AiService {
         return generateChatReply(messages); // 复用新方法
     }
 
-    // 新增：处理真正的多轮聊天（默认 1500 tokens）
+    // 新增：处理真正的多轮聊天（默认 maxTokens：deepseek-v4-pro 为推理模型，
+    // 推理与正文共享额度，1500 会被推理耗尽导致空回复，故默认给足 8000）
     @Override
     public String generateChatReply(List<Map<String, String>> messages) {
-        return generateChatReply(messages, 1500);
+        return generateChatReply(messages, 8000);
     }
 
     // 新增：处理真正的多轮聊天（自定义 maxTokens，创作助手用）
@@ -78,14 +79,24 @@ public class AiServiceImpl implements AiService {
                 throw new RuntimeException("AI服务返回格式异常");
             }
 
-            String reply = jsonObject.getJSONArray("choices")
-                    .getJSONObject(0)
-                    .getJSONObject("message")
-                    .getString("content");
+            String reply = null;
+            String finishReason = null;
+            JSONObject msgObj = null;
+            try {
+                msgObj = jsonObject.getJSONArray("choices").getJSONObject(0).getJSONObject("message");
+                reply = msgObj.getString("content");
+                finishReason = jsonObject.getJSONArray("choices").getJSONObject(0).getString("finish_reason");
+            } catch (Exception ignore) { }
 
             if (reply == null || reply.trim().isEmpty()) {
-                // 避免"success=true 但无文本"的假成功
-                throw new RuntimeException("AI 模型本次未生成任何内容（可能上下文过短或触发安全策略），请补充剧本正文后重试");
+                // 诊断：打印原始响应，便于定位（安全过滤 / 格式异常 / 空返回）
+                String diag = response.getBody();
+                if (diag != null && diag.length() > 1500) diag = diag.substring(0, 1500);
+                System.err.println("[AI诊断] 空内容返回。finish_reason=" + finishReason
+                        + " message=" + (msgObj != null ? msgObj.toJSONString() : "N/A"));
+                System.err.println("[AI诊断] 原始响应片段: " + diag);
+                throw new RuntimeException("AI 模型本次未生成内容（finish_reason="
+                        + (finishReason == null ? "unknown" : finishReason) + "）。请补充剧本正文后重试；若反复出现可稍后再试");
             }
             return reply.trim();
         } catch (Exception e) {
