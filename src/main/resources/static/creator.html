@@ -169,8 +169,10 @@
         .rel-palette .pal-name { font-size:13px; color:#eee; white-space:nowrap; }
         .rel-palette .pal-item.in-graph { opacity:.55; border-style:dashed; cursor:default; }
         .rel-palette .pal-item.in-graph:hover { transform:none; box-shadow:none; border-color:rgba(255,255,255,.2); }
+        .rel-palette .pal-item:not(.in-graph):hover { cursor:grab; }
+        .rel-drag-ghost { opacity:.9 !important; cursor:grabbing !important; }
         .rel-graph { width:100%; height:420px; background: radial-gradient(ellipse at center, rgba(0,229,255,.04) 0%, rgba(0,0,0,.28) 75%);
-            border:1px solid rgba(0,229,255,.22); border-radius:12px; overflow:hidden; position:relative; }
+            border:1px solid rgba(0,229,255,.22); border-radius:12px; overflow:hidden; position:relative; cursor:default; }
         .rel-graph.drag-over { border-color:#00e5ff; box-shadow: inset 0 0 60px rgba(0,229,255,.12); }
         .rel-graph.linking { cursor: crosshair; box-shadow: inset 0 0 40px rgba(0,229,255,.07); }
         .rel-node-label { color:#fff; font-size:13px; font-weight:bold; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
@@ -662,15 +664,25 @@
         // 关系图：兼容旧版字符串草稿（尝试解析为节点/边），新版对象直接载入
         if (m.relations && typeof m.relations === 'object' && !Array.isArray(m.relations) && m.relations.edges) {
             relData = {
-                nodes: (m.relations.nodes || []).map(n => ({ id: n.id || ('r' + (n.roleIdx||0)), roleIdx: n.roleIdx !== undefined ? n.roleIdx : 0 })),
+                nodes: (m.relations.nodes || []).map(n => ({
+                    id: n.id || ('r' + (n.roleIdx||0)),
+                    roleIdx: n.roleIdx !== undefined ? n.roleIdx : 0,
+                    x: (n.x !== undefined && n.y !== undefined) ? n.x : undefined,
+                    y: (n.x !== undefined && n.y !== undefined) ? n.y : undefined
+                })),
                 edges: (m.relations.edges || []).map(e => ({
                     id: e.id || ('e' + Math.random().toString(36).slice(2)),
                     from: e.from, to: e.to, type: e.type || '旧识',
                     label: e.label || '', direction: e.direction || 'bi', visibility: e.visibility || 'public'
                 }))
             };
+            // 旧数据可能没有位置：给无位置节点随机散布，避免全部叠在原点
+            relData.nodes.forEach(n => {
+                if (n.x === undefined) { n.x = 60 + Math.random() * 360; n.y = 40 + Math.random() * 260; }
+            });
         } else if (typeof m.relations === 'string' && m.relations.trim()) {
             relData = relParseLegacyText(m.relations);
+            relData.nodes.forEach(n => { n.x = 60 + Math.random() * 360; n.y = 40 + Math.random() * 260; });
         } else {
             // 新剧本：空画布（角色由人物库拖入），避免一进来全堆在左上角
             relData = { nodes: [], edges: [] };
@@ -1629,6 +1641,8 @@
     }
     function saveDraft() {
         try {
+            // 保存前把画布最新位置写回 relData（防丢位置）
+            if (window.relPersistPositions) relPersistPositions();
             const d = {
                 t: Date.now(),
                 editId: editId ? parseInt(editId) : null,
@@ -1963,8 +1977,18 @@
 
         // 单击边 → 打开编辑
         relCy.on('tap', 'edge', evt => { relOpenEdgeEditor(evt.target); });
-        // 单击空白 → 取消连线/取消选中
-        relCy.on('tap', evt => { if (evt.target === relCy) { cancelRelLink(); } });
+        // 单击空白 → 若在连线模式仅取消当前起点；否则取消连线状态
+        relCy.on('tap', evt => {
+            if (evt.target !== relCy) return;
+            if (relLinkModeOn()) {
+                relLinkSource = null;
+                if (relCy) relCy.remove('edge.preview');
+                relCy.nodes().unselect();
+                document.getElementById('relHint').innerText = '已取消选择起点。点击起点角色 → 点击终点角色（点"连线模式"退出）';
+            } else {
+                cancelRelLink();
+            }
+        });
         // 空白拖拽平移默认开启；节点拖拽开启
         relCy.userZoomingEnabled(true); relCy.userPanningEnabled(true);
 
@@ -1976,14 +2000,15 @@
         bindRelEvents();
     }
 
-    // —— 把 relData 渲染进画布（只画已有节点，不自动塞角色）——
+    // —— 把 relData 渲染进画布（只画已有节点，恢复位置，不自动塞角色）——
     function relRenderFromData() {
         if (!relCy) return;
         const elems = [];
         relData.nodes.forEach(n => {
             const role = roles[n.roleIdx];
             const avatar = role && role.avatar ? role.avatar : '';
-            elems.push({ data: { id: n.id, label: role ? role.name : '角色' + (n.roleIdx + 1), avatar: avatar } });
+            const pos = (n.x !== undefined && n.y !== undefined) ? { x: n.x, y: n.y } : undefined;
+            elems.push({ data: { id: n.id, label: role ? role.name : '角色' + (n.roleIdx + 1), avatar: avatar }, position: pos });
         });
         relData.edges.forEach(e => {
             elems.push({ data: { id: e.id, source: e.from, target: e.to, label: e.label || e.type || '' }, classes: e.visibility === 'hidden' ? 'hiddenRel' : '' });
@@ -1999,7 +2024,7 @@
         renderRelPalette();
     }
 
-    // —— 人物库渲染：头像 + 名字，可拖拽/点击放入画布 ——
+    // —— 人物库渲染：头像 + 名字，鼠标拖放/点击放入画布 ——
     function renderRelPalette() {
         const box = document.getElementById('relPalette');
         if (!box) return;
@@ -2007,23 +2032,69 @@
         box.innerHTML = roles.map((r, i) => {
             const avatar = r.avatar && r.avatar !== '' ? r.avatar : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 fill=%27%231e3a5f%27/%3E%3Ctext x=%2750%27 y=%2762%27 text-anchor=%27middle%27 font-size=%2734%27 fill=%27%2300e5ff%27%3E' + encodeURIComponent((r.name||'?').slice(0,1)) + '%3C/text%3E%3C/svg%3E';
             const inGraphCls = inGraph.has('r' + i) ? ' in-graph' : '';
-            return `<div class="pal-item${inGraphCls}" draggable="true" data-ridx="${i}" title="${inGraph.has('r'+i) ? '已在图中' : '拖入画布或点击放入'}">
-                <img class="pal-avatar" src="${escAttr(avatar)}" onerror="this.style.visibility='hidden';">
+            return `<div class="pal-item${inGraphCls}" data-ridx="${i}" title="${inGraph.has('r'+i) ? '已在图中（双击图中的节点可移除）' : '按住拖到画布，或单击快速放入'}">
+                <img class="pal-avatar" src="${escAttr(avatar)}" onerror="this.style.visibility='hidden';" draggable="false">
                 <span class="pal-name">${escHtml(r.name)}${inGraph.has('r'+i) ? ' ✓' : ''}</span>
             </div>`;
         }).join('');
-        // 绑定拖拽与点击
+        // 自实现拖放（不依赖 HTML5 DnD，兼容性最好）
         box.querySelectorAll('.pal-item').forEach(item => {
             const ridx = parseInt(item.dataset.ridx);
-            item.addEventListener('dragstart', ev => {
-                if (relData.nodes.some(n => n.roleIdx === ridx)) { ev.preventDefault(); return; }
-                item.classList.add('dragging');
-                ev.dataTransfer.setData('text/rel-role', String(ridx));
-                ev.dataTransfer.effectAllowed = 'copy';
+            item.addEventListener('mousedown', ev => {
+                if (relData.nodes.some(n => n.roleIdx === ridx)) return; // 已在图中
+                ev.preventDefault();
+                relPaletteDragStart(ev, ridx, item);
             });
-            item.addEventListener('dragend', () => item.classList.remove('dragging'));
-            item.addEventListener('click', () => { if (!relData.nodes.some(n => n.roleIdx === ridx)) relAddRoleAtCenter(ridx); });
         });
+    }
+
+    // —— 人物库 → 画布 拖放（纯鼠标事件实现）——
+    let relDrag = null; // { ridx, dx, dy, startX, startY, moved, ghost }
+    function relPaletteDragStart(ev, ridx, item) {
+        const rect = item.getBoundingClientRect();
+        // 幽灵副本：跟随鼠标，让用户看到在拖谁
+        const ghost = item.cloneNode(true);
+        ghost.className = 'pal-item rel-drag-ghost';
+        ghost.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;box-shadow:0 8px 24px rgba(0,229,255,.4);opacity:.9;';
+        ghost.style.left = rect.left + 'px';
+        ghost.style.top = rect.top + 'px';
+        ghost.style.width = rect.width + 'px';
+        document.body.appendChild(ghost);
+        relDrag = { ridx: ridx, dx: ev.clientX - rect.left, dy: ev.clientY - rect.top, startX: ev.clientX, startY: ev.clientY, moved: false, ghost: ghost };
+        document.addEventListener('mousemove', relPaletteDragMove);
+        document.addEventListener('mouseup', relPaletteDragEnd);
+    }
+    function relPaletteDragMove(ev) {
+        if (!relDrag) return;
+        if (!relDrag.moved && (Math.abs(ev.clientX - relDrag.startX) > 5 || Math.abs(ev.clientY - relDrag.startY) > 5)) {
+            relDrag.moved = true;
+        }
+        if (relDrag.ghost) {
+            relDrag.ghost.style.left = (ev.clientX - relDrag.dx) + 'px';
+            relDrag.ghost.style.top = (ev.clientY - relDrag.dy) + 'px';
+        }
+    }
+    function relPaletteDragEnd(ev) {
+        if (!relDrag) return;
+        const drag = relDrag; relDrag = null;
+        if (drag.ghost) { drag.ghost.remove(); }
+        document.removeEventListener('mousemove', relPaletteDragMove);
+        document.removeEventListener('mouseup', relPaletteDragEnd);
+        const container = document.getElementById('relGraph');
+        if (!container || !relCy) return;
+        const rect = container.getBoundingClientRect();
+        const inCanvas = ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom;
+        if (drag.moved && inCanvas) {
+            // 拖动后松手在画布内 → 放在落点
+            const modelPos = relCy.renderedToModel({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+            relAddRole(drag.ridx, modelPos);
+        } else if (!drag.moved && inCanvas) {
+            // 按下即松（未拖动）且落在画布 → 放入画布中心
+            relAddRoleAtCenter(drag.ridx);
+        } else if (!drag.moved) {
+            // 未拖动且没落在画布 → 视为单击，也放入（方便无拖拽习惯）
+            relAddRoleAtCenter(drag.ridx);
+        }
     }
 
     // —— 画布 drop：把角色放到落点 ——
@@ -2058,15 +2129,15 @@
         if (h) { h.innerText = txt; setTimeout(() => { if (h.innerText === txt) h.innerText = '① 从人物库把角色拖进画布 ② 连线模式连关系'; }, 1800); }
     }
 
-    // —— 在指定坐标加入角色节点（不存在才加）——
+    // —— 在指定坐标加入角色节点（不存在才加，保存位置）——
     function relAddRole(ridx, pos) {
         if (!roles[ridx]) return;
         if (relData.nodes.some(n => n.roleIdx === ridx)) return;
         const id = 'r' + ridx;
-        relData.nodes.push({ id: id, roleIdx: ridx });
+        relData.nodes.push({ id: id, roleIdx: ridx, x: pos && pos.x !== undefined ? pos.x : undefined, y: pos && pos.y !== undefined ? pos.y : undefined });
         const role = roles[ridx];
         relCy.add({ data: { id: id, label: role.name, avatar: role.avatar || '' }, position: pos });
-        relCy.nodes('#r' + ridx).style('border-color', '#00e5ff');
+        relCy.nodes('#' + id).style('border-color', '#00e5ff');
         renderRelPalette();
         scheduleDraftSave();
     }
@@ -2082,12 +2153,21 @@
         }
         relAddRole(ridx, pos);
     }
-    // 一键放入全部角色（自动布局）
+    // 一键放入全部角色（自动布局，随后保存布局位置）
     function relAddAllRoles() {
-        roles.forEach((_, i) => { if (!relData.nodes.some(n => n.roleIdx === i)) relData.nodes.push({ id: 'r' + i, roleIdx: i }); });
+        roles.forEach((_, i) => { if (!relData.nodes.some(n => n.roleIdx === i)) relData.nodes.push({ id: 'r' + i, roleIdx: i, x: undefined, y: undefined }); });
         relRenderFromData();
         relLayout('circle');
+        relPersistPositions();
         scheduleDraftSave();
+    }
+    // 把画布节点当前位置写回 relData（拖拽/布局后调用）
+    function relPersistPositions() {
+        if (!relCy) return;
+        relCy.nodes().forEach(cyNode => {
+            const n = relData.nodes.find(x => x.id === cyNode.id());
+            if (n) { const p = cyNode.position(); n.x = p.x; n.y = p.y; }
+        });
     }
 
     function relApplyEdgeStyle(edge, d) {
@@ -2101,9 +2181,10 @@
 
     function relLayout(kind) {
         if (!relCy) return;
-        const opts = { animate: true, animationDuration: 350, padding: 24 };
+        const opts = { animate: true, animationDuration: 350, padding: 24, stop: () => relPersistPositions() };
         if (kind === 'circle') { relCy.layout(Object.assign({ name: 'circle' }, opts)).run(); }
         else { relCy.layout(Object.assign({ name: 'grid' }, opts)).run(); }
+        scheduleDraftSave();
     }
 
     // —— 连线模式 ——
@@ -2134,13 +2215,21 @@
     // 连线点击处理（注册在 init 之后）
     function relBindTap() {
         if (!relCy) return;
+        // 节点拖动结束 → 保存位置
+        relCy.on('dragfree', 'node', () => { relPersistPositions(); scheduleDraftSave(); });
+        // 双击节点 → 删除该角色节点
+        relCy.on('dbltap', 'node', evt => {
+            const node = evt.target;
+            if (relLinkModeOn()) return;
+            relRemoveNode(node.id());
+        });
         relCy.on('tap', 'node', evt => {
             const node = evt.target;
             if (relLinkModeOn()) {
                 if (!relLinkSource) {
                     relLinkSource = node.id();
                     node.select();
-                    document.getElementById('relHint').innerText = '已选 ' + node.data('label') + ' 为起点，再点击目标角色';
+                    document.getElementById('relHint').innerText = '已选 ' + node.data('label') + ' 为起点，再点击目标角色（双击空白取消）';
                 } else if (relLinkSource !== node.id()) {
                     // 检查是否已存在
                     const dup = relData.edges.find(e => (e.from === relLinkSource && e.to === node.id()) || (e.direction !== 'bi' && e.to === relLinkSource && e.from === node.id()));
@@ -2156,10 +2245,25 @@
                     cancelRelLink();
                 }
             } else {
-                // 普通单击：双击编辑事件用 tap 会连触发；这里仅做选中
+                // 普通单击：仅选中，并提示操作（双击删除/拖动连线）
                 relCy.nodes().unselect(); node.select();
+                relHint('单击选中「' + node.data('label') + '」：拖动可移动 · 双击移除 · 开启连线模式可连关系');
             }
         });
+    }
+
+    // —— 删除图中的角色节点（连带其关系边）——
+    function relRemoveNode(id) {
+        const n = relData.nodes.find(x => x.id === id);
+        const role = n ? roles[n.roleIdx] : null;
+        const name = role ? role.name : id;
+        if (!confirm('从关系图中移除角色「' + name + '」？\n（仅移出关系图，不会删除剧本角色本身；其所有关系线将一并删除）')) return;
+        relData.nodes = relData.nodes.filter(x => x.id !== id);
+        relData.edges = relData.edges.filter(e => e.from !== id && e.to !== id);
+        if (relCy) { relCy.getElementById(id).remove(); relCy.edges().forEach(edge => { const d = relData.edges.find(x => x.id === edge.id()); if (!d) edge.remove(); }); }
+        renderRelPalette();
+        relHint('已移除「' + name + '」；可在上方人物库再次拖入');
+        scheduleDraftSave();
     }
 
     // —— 关系编辑浮层 ——
