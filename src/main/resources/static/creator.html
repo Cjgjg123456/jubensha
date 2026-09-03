@@ -1001,8 +1001,13 @@
                 typewriterEffect('aiOutput', aiResultText);
                 hint.innerText = '✅ 完成！检查内容后点击下方按钮写入剧本。';
                 updateApplyRowVisibility();
+            } else if (!res.success) {
+                // 后端明确失败：展示真实原因
+                document.getElementById('aiOutput').innerHTML = '<span style="color:#ff8a80;">⚠️ ' + escHtml(res.msg || 'AI 服务异常，请稍后重试') + '</span>';
+                hint.innerText = '生成失败，可重试。';
             } else {
-                document.getElementById('aiOutput').innerHTML = '<span style="color:#ff8a80;">⚠️ ' + (res.msg || 'AI 未返回内容，请重试') + '</span>';
+                // success 但无文本（异常兜底）
+                document.getElementById('aiOutput').innerHTML = '<span style="color:#ff8a80;">⚠️ AI 未返回任何文本。建议：确认当前目标段落已填写剧本内容后重试，或切换任务类型。</span>';
                 hint.innerText = '生成失败，可重试。';
             }
         } catch (e) {

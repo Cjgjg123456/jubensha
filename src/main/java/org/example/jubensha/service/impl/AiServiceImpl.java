@@ -83,11 +83,19 @@ public class AiServiceImpl implements AiService {
                     .getJSONObject("message")
                     .getString("content");
 
-            return reply != null ? reply.trim() : "【系统波动】AI陷入了沉思，请再说一次。";
+            if (reply == null || reply.trim().isEmpty()) {
+                // 避免"success=true 但无文本"的假成功
+                throw new RuntimeException("AI 模型本次未生成任何内容（可能上下文过短或触发安全策略），请补充剧本正文后重试");
+            }
+            return reply.trim();
         } catch (Exception e) {
+            if (e instanceof RuntimeException && e.getMessage() != null
+                    && e.getMessage().contains("AI 模型本次未生成")) {
+                throw e; // 空内容：原样抛出让上层显示明确原因
+            }
             e.printStackTrace();
             System.err.println("AI服务调用失败: " + e.getMessage());
-            return "【系统波动】AI陷入了沉思，请再说一次。";
+            throw new RuntimeException("AI 服务调用失败：" + (e.getMessage() == null ? "未知错误" : e.getMessage()));
         }
     }
 }
